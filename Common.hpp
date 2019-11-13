@@ -27,7 +27,7 @@ void padVLine
 
 
 template<class type>
-void printArray(type * arr, uint64_t n, std::string delimiter = " ")
+void printArray(type arr, uint64_t n, std::string delimiter = " ")
 {
   for (uint64_t i = 0; i < n; ++i) {
     std::cout << arr[i] << delimiter;

@@ -45,6 +45,13 @@ public:
   ~NaiveSlp() {};
 
 
+  NaiveSlp
+  (
+   const NaiveSlp & other
+   ) : seq_(other.seq_), rules_(other.rules_), alph_(other.alph_) {
+  }
+
+
   void load_NavarroRepair
   (
    const char * fname_base
@@ -346,7 +353,7 @@ public:
       } else {
         ruleFreqVec[v - getAlphSize()]++;
       }
-      v = rules_[i].left;
+      v = rules_[i].right;
       if (v < getAlphSize()) {
         alphFreqVec[v]++;
       } else {

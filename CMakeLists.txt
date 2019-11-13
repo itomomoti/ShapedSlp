@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
-### set a compiler supporting constexpr math
-set(CMAKE_C_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "gcc compiler" FORCE)
-set(CMAKE_CXX_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "g++ compiler" FORCE)
+### use a compiler supporting constexpr math
+# set(CMAKE_C_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "gcc compiler" FORCE)
+# set(CMAKE_CXX_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "g++ compiler" FORCE)
 
 ### Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,32 +38,12 @@ endif()
 
 message("Building in ${CMAKE_BUILD_TYPE} mode")
 
-set(CMAKE_CXX_FLAGS "--std=c++2a /opt/local/lib/libstdc++.6.dylib")
+# set(CMAKE_CXX_FLAGS "--std=c++2a /opt/local/lib/libstdc++.6.dylib")
+set(CMAKE_CXX_FLAGS "--std=c++2a")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -Ofast -fstrict-aliasing -march=native -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
-
-
-# add_executable(ShapedSlp ShapedSlp.cpp Common.cpp ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
-# TARGET_LINK_LIBRARIES(ShapedSlp sdsl)
-
-# add_executable(ShapedSlp_SeparatedVlc ShapedSlp_SeparatedVlc.cpp Common.cpp ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
-# TARGET_LINK_LIBRARIES(ShapedSlp_SeparatedVlc sdsl)
-
-
-# add_executable(ShapedSlp_Build ShapedSlp_Build.cpp Common.cpp ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
-# TARGET_LINK_LIBRARIES(ShapedSlp_Build sdsl)
-
-# add_executable(ShapedSlp_Substr_Benchmark ShapedSlp_Substr_Benchmark.cpp Common.cpp ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
-# TARGET_LINK_LIBRARIES(ShapedSlp_Substr_Benchmark sdsl)
-
-
-# add_executable(PoSlp_Build PoSlp_Build.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
-# TARGET_LINK_LIBRARIES(PoSlp_Build sdsl)
-
-# add_executable(PoSlp_Substr_Benchmark PoSlp_Substr_Benchmark.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
-# TARGET_LINK_LIBRARIES(PoSlp_Substr_Benchmark sdsl)
 
 
 add_executable(SlpEncBuild SlpEncBuild.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)

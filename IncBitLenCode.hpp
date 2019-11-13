@@ -59,6 +59,20 @@ public:
   }
 
 
+  template<class vecT>
+  void init
+  (
+   const vecT & vec
+   ) {
+    assert(num_ == 0);
+
+    initNum(vec.size());
+    for (uint64_t i = 0; i < vec.size(); ++i) {
+      this->write(vec[i], i);
+    }
+  }
+
+
   /*!
    * @brief Array subscript for writing
    */

@@ -4,9 +4,14 @@
 #include "cmdline.h"
 #include "Common.hpp"
 #include "PoSlp.hpp"
+#include "ShapedSlp_Status.hpp"
 #include "ShapedSlp.hpp"
+#include "ShapedSlpV2.hpp"
+#include "SelfShapedSlp.hpp"
+#include "SelfShapedSlpV2.hpp"
 #include "DirectAccessibleGammaCode.hpp"
-#include "DirectAccessibleGammaCodeWithRrr.hpp"
+#include "IncBitLenCode.hpp"
+#include "SelectType.hpp"
 #include "VlcVec.hpp"
 
 using namespace std;
@@ -14,11 +19,12 @@ using namespace std;
 using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
+using var_t = uint32_t;
+
 
 template<class SlpT>
-void measureExpand
+void measure
 (
- SlpT slp,
  std::string in,
  const uint64_t numItr,
  const uint64_t lenExpand,
@@ -26,6 +32,8 @@ void measureExpand
  const uint64_t jump,
  const bool dummy_flag
 ) {
+  SlpT slp;
+
   auto start = timer::now();
   ifstream fs(in);
   slp.load(fs);
@@ -40,20 +48,26 @@ void measureExpand
     exit(1);
   }
 
+  const uint64_t numLoop = 50;
+  std::vector<double> times(numLoop);
   string substr;
   substr.resize(lenExpand);
-  start = timer::now();
-  uint64_t beg = firstPos;
-  for (uint64_t i = 0; i < numItr; ++i) {
-    // substr[0] = slp.charAt(beg);
-    slp.expandSubstr(beg, lenExpand, substr.data());
-    beg += jump;
-    if (beg > textLen - lenExpand) {
-      beg -= (textLen - lenExpand);
+  for (uint64_t loop = 0; loop < numLoop; ++loop) {
+    start = timer::now();
+    uint64_t beg = firstPos;
+    for (uint64_t i = 0; i < numItr; ++i) {
+      // substr[0] = slp.charAt(beg);
+      slp.expandSubstr(beg, lenExpand, substr.data());
+      beg += jump;
+      if (beg > textLen - lenExpand) {
+        beg -= (textLen - lenExpand);
+      }
     }
+    stop = timer::now();
+    times[loop] = (double)duration_cast<microseconds>(stop-start).count() / numItr;
   }
-  stop = timer::now();
-  cout << "time to expand (micro sec per query): " << (double)duration_cast<microseconds>(stop-start).count() / numItr << endl;
+  std::sort(times.begin(), times.end());
+  cout << "time to expand (micro sec per query): " << times[numLoop / 2] << endl;
 
   if (dummy_flag) {
     cout << substr << endl;
@@ -63,17 +77,73 @@ void measureExpand
 
 int main(int argc, char* argv[])
 {
+  using SelSd = SelectSdvec<>;
+  using SelMcl = SelectMcl<>;
+  using DagcSd = DirectAccessibleGammaCode<SelSd>;
+  using DagcMcl = DirectAccessibleGammaCode<SelMcl>;
+  using Vlc64 = VlcVec<sdsl::coder::elias_delta, 64>;
+  using Vlc128 = VlcVec<sdsl::coder::elias_delta, 128>;
+  using funcs_type = map<string,
+                         void(*)
+                         (
+                          std::string in,
+                          const uint64_t numItr,
+                          const uint64_t lenExpand,
+                          const uint64_t firstPos,
+                          const uint64_t jump,
+                          const bool dummy_flag
+                          )>;
+  funcs_type funcs;
+
+  //// PoSlp: Post-order SLP
+  //// Sometimes PoSlp_Sd is better than PoSlp_Iblc
+  funcs.insert(make_pair("PoSlp_Iblc", measure<PoSlp<var_t, IncBitLenCode>>));
+  funcs.insert(make_pair("PoSlp_Sd", measure<PoSlp<var_t, DagcSd>>));
+  // funcs.insert(make_pair("PoSlp_Mcl", measure<PoSlp<var_t, DagcMcl>>));
+
+  //// ShapedSlp: plain implementation of slp encoding that utilizes shape-tree grammar
+  //// Since bit length to represent slp element is small, SelMcl is good for them.
+  //// For stg and bal element, SelSd is better
+  funcs.insert(make_pair("ShapedSlp_SdMclSd_SdMcl", measure<ShapedSlp<var_t, DagcSd, DagcMcl, DagcSd, SelSd, SelMcl>>));
+  funcs.insert(make_pair("ShapedSlp_SdSdSd_SdMcl", measure<ShapedSlp<var_t, DagcSd, DagcSd, DagcSd, SelSd, SelMcl>>));
+
+  //// ShapedSlpV2: all vlc vectors are merged into one.
+  //// Generally encoding size gets worse than ShapedSlp_SdMclSd_SdMcl because
+  //// - bit length to represnet stg and bal element is large and DagcSd is a good choice, whereas
+  //// - bit size to represent slp element is significantly small and DagcMcl should be used
+  funcs.insert(make_pair("ShapedSlpV2_Sd_SdMcl", measure<ShapedSlpV2<var_t, DagcSd, SelSd, SelMcl>>));
+  // funcs.insert(make_pair("ShapedSlpV2_SdSdSd", measure<ShapedSlp<var_t, DagcSd, SelSd, SelSd>>));
+  // funcs.insert(make_pair("ShapedSlpV2_SdMclMcl", measure<ShapedSlp<var_t, DagcSd, SelMcl, SelMcl>>));
+  // funcs.insert(make_pair("ShapedSlpV2_Vlc128SdSd", measure<ShapedSlp<var_t, Vlc128, SelSd, SelSd>>));
+
+  //// SelfShapedSlp: ShapedSlp that does not use shape-tree grammar
+  funcs.insert(make_pair("SelfShapedSlp_SdSd_Sd", measure<SelfShapedSlp<var_t, DagcSd, DagcSd, SelSd>>));
+  funcs.insert(make_pair("SelfShapedSlp_SdSd_Mcl", measure<SelfShapedSlp<var_t, DagcSd, DagcSd, SelMcl>>));
+  // funcs.insert(make_pair("SelfShapedSlp_MclMcl_Sd", measure<SelfShapedSlp<var_t, DagcMcl, DagcMcl, SelSd>>));
+  // funcs.insert(make_pair("SelfShapedSlp_SdMcl_Sd", measure<SelfShapedSlp<var_t, DagcSd, DagcMcl, SelSd>>));
+
+  //// SelfShapedSlpV2:
+  //// attempted to asign smaller offsets to frequent variables by giving special seats for hi-frequent ones
+  funcs.insert(make_pair("SelfShapedSlpV2_SdSd_Sd", measure<SelfShapedSlpV2<var_t, DagcSd, DagcSd, SelSd>>));
+  // funcs.insert(make_pair("SelfShapedSlpV2_SdSd_Mcl", measure<SelfShapedSlpV2<var_t, DagcSd, DagcSd, SelMcl>>));
+
+  string methodList;
+  for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
+    methodList += itr->first + ". ";
+  }
+
+
   cmdline::parser parser;
-  parser.add<std::string>("input", 'i', "input file name in which ShapedSlp data structure is written.", true);
-  parser.add<uint32_t>("encoding", 'e', "encoding: [0] PoSlp. [1] ShapedSlp. [2] ShapedSlpDagc", true);
+  parser.add<string>("input", 'i', "input file name in which ShapedSlp data structure is written.", true);
+  parser.add<string>("encoding", 'e', "encoding: " + methodList, true);
   parser.add<uint64_t>("numItr", 'n', "number of iterations", true);
   parser.add<uint64_t>("lenExpand", 'l', "length to expand", true);
   parser.add<uint64_t>("firstPos", 'f', "first position to access", false, 0);
   parser.add<uint64_t>("jump", 'j', "amount of jump when determining the next position to access", false, 38201); // default 38201 is a prime number
   parser.add<bool>("dummy_flag", 0, "this is dummy flag to prevent that optimization deletes codes", false, false);
   parser.parse_check(argc, argv);
-  const std::string in = parser.get<std::string>("input");
-  const uint32_t encoding = parser.get<uint32_t>("encoding");
+  const string in = parser.get<string>("input");
+  const string encoding = parser.get<string>("encoding");
   const uint64_t numItr = parser.get<uint64_t>("numItr");
   const uint64_t lenExpand = parser.get<uint64_t>("lenExpand");
   const uint64_t firstPos = parser.get<uint64_t>("firstPos");
@@ -85,7 +155,23 @@ int main(int argc, char* argv[])
     exit(1);
   }
 
-  using var_t = uint32_t;
+
+  if (encoding.compare("All") == 0) {
+    for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
+      cout << itr->first << ": BEGIN" << std::endl;
+      itr->second(in + "_" + itr->first, numItr, lenExpand, firstPos, jump, dummy_flag);
+      cout << itr->first << ": END" << std::endl;
+    }
+  } else {
+    auto itr = funcs.find(encoding);
+    if (itr != funcs.end()) {
+      itr->second(in, numItr, lenExpand, firstPos, jump, dummy_flag);
+    } else {
+      cerr << "error: specify a valid encoding name in " + methodList << endl;
+      exit(1);
+    }
+  }
+
 
   // { // correctness check
   //   PoSlp<var_t> poslp;
@@ -138,22 +224,6 @@ int main(int argc, char* argv[])
   //   }
   // }
 
-  if (encoding == 0) {
-    PoSlp<var_t> poslp;
-    measureExpand(poslp, in, numItr, lenExpand, firstPos, jump, dummy_flag);
-  } else if (encoding == 1) {
-    ShapedSlp<var_t, DirectAccessibleGammaCode> sslp;
-    measureExpand(sslp, in, numItr, lenExpand, firstPos, jump, dummy_flag);
-  } else if (encoding == 2) {
-    ShapedSlp<var_t, DirectAccessibleGammaCodeWithRrr> sslp;
-    measureExpand(sslp, in, numItr, lenExpand, firstPos, jump, dummy_flag);
-  } else if (encoding == 3) {
-    ShapedSlp<var_t, VlcVec<sdsl::coder::elias_delta, 64> > sslp;
-    measureExpand(sslp, in, numItr, lenExpand, firstPos, jump, dummy_flag);
-  } else if (encoding == 4) {
-    ShapedSlp<var_t, VlcVec<sdsl::coder::elias_delta, 128> > sslp;
-    measureExpand(sslp, in, numItr, lenExpand, firstPos, jump, dummy_flag);
-  }
 
   return 0;
 }

@@ -4,14 +4,17 @@
 #include <sdsl/bit_vectors.hpp>
 #include "Common.hpp"
 
+template
+<
+  class SelectT
+  >
 class DirectAccessibleGammaCode
 {
 private:
   uint64_t num_;
   uint64_t numWords_;
   uint64_t * array_; //!< Array to store values.
-  sdsl::bit_vector bv_;
-  sdsl::select_support_mcl<> bvSel_;
+  SelectT sel_;
 
 
 public:
@@ -34,12 +37,13 @@ public:
    const vecT & vec
    ) {
     num_ = vec.size();
+    sdsl::bit_vector bv;
     {
       uint64_t bvSize = 1; // +1 for sentinel
       for (uint64_t i = 0; i < vec.size(); ++i) {
         bvSize += sdsl::bits::hi(vec[i] + 1) + 1;
       }
-      bv_.resize(bvSize);
+      bv.resize(bvSize);
       numWords_ = (bvSize - vec.size() + 64) / 64;
       array_ = static_cast<uint64_t *>(malloc(numWords_ * sizeof(uint64_t)));
     }
@@ -48,9 +52,9 @@ public:
       uint64_t bvPos = 0;
       for (uint64_t i = 0; i < vec.size(); ++i) {
         const uint64_t hi = sdsl::bits::hi(vec[i] + 1);
-        bv_[bvPos++] = 1;
+        bv[bvPos++] = 1;
         for (uint64_t j = 0; j < hi; ++j) {
-          bv_[bvPos++] = 0;
+          bv[bvPos++] = 0;
         }
         if (hi) {
           const uint64_t val = (vec[i] + 1) ^ (1ULL << hi);
@@ -58,9 +62,9 @@ public:
           arrPos += hi;
         }
       }
-      bv_[bvPos] = 1;
+      bv[bvPos] = 1;
     }
-    bvSel_.init_slow(&bv_);
+    sel_.init(std::move(bv));
   }
 
 
@@ -86,8 +90,8 @@ public:
    ) const {
     assert(idx < num_);
 
-    const uint64_t bvBeg = bvSel_(idx + 1);
-    const uint64_t hi = sdsl::bits::next(bv_.data(), bvBeg + 1) - bvBeg - 1;
+    const uint64_t bvBeg = sel_(idx + 1);
+    const uint64_t hi = sel_(idx + 2) - bvBeg - 1;
     // std::cout << "bvBeg = " << bvBeg << ", hi = " << hi << std::endl;
     uint64_t ret = 1ULL << hi;
     if (hi) {
@@ -112,8 +116,7 @@ public:
    */
   size_t calcMemBytes() const noexcept {
     size_t ret = sizeof(*this);
-    ret += sdsl::size_in_bytes(bv_);
-    ret += sdsl::size_in_bytes(bvSel_);
+    ret += sel_.calcMemBytes();
     ret += sizeof(uint64_t) * numWords_;
     return ret;
   }
@@ -127,10 +130,7 @@ public:
     in.read((char*) & numWords_, sizeof(numWords_));
     array_ = static_cast<uint64_t *>(malloc(numWords_ * sizeof(uint64_t)));
     in.read((char*) array_, numWords_ * sizeof(uint64_t));
-    bv_.load(in);
-    bvSel_.load(in);
-
-    bvSel_.set_vector(&bv_);
+    sel_.load(in);
   }
 
 
@@ -141,8 +141,7 @@ public:
     out.write((char*) & num_, sizeof(num_));
     out.write((char*) & numWords_, sizeof(numWords_));
     out.write((char*) array_, numWords_ * sizeof(uint64_t));
-    bv_.serialize(out);
-    bvSel_.serialize(out);
+    sel_.serialize(out);
   }
 
 
@@ -152,6 +151,7 @@ public:
    ) const noexcept {
     std::cout << "DirectAccessibleGammaCode object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
     std::cout << "size = " << this->size() << ", numWords = " << numWords_ << std::endl;
+    sel_.printStatus(verbose);
     if (verbose) {
       const auto size = this->size();
       std::cout << "dump stored values" << std::endl;

@@ -11,13 +11,13 @@
 #include "Common.hpp"
 #include "NaiveSlp.hpp"
 #include "fbtree.h"
-#include "IncBitLenCode.hpp"
 
 // #define DEBUGBUG
 
 template
 <
-  typename tparam_var_t
+  typename tparam_var_t,
+  class DacT
   >
 class PoSlp
 {
@@ -35,7 +35,7 @@ private:
   var_t startVar_;
   std::vector<char> alph_;
   comp::FBTREE fbt_;
-  IncBitLenCode leaves_;
+  DacT leaves_;
   sdsl::sd_vector<> pa_; // position array
   sdsl::sd_vector<>::select_1_type paSel_;
 
@@ -352,7 +352,7 @@ public:
       alph_[i] = slp.getChar(i);
     }
     numRules_ = slp.getNumRules();
-    leaves_.initNum(slp.getNumRules() + 1);
+    std::vector<uint64_t> leaves(slp.getNumRules() + 1);
     fbt_.Build(1024, 2, 2 * slp.getNumRules() + 2);
     std::vector<uint64_t> postRename(slp.getNumRules()); // rename by post-order
     for (uint64_t i = 0; i < postRename.size(); ++i) {
@@ -366,7 +366,7 @@ public:
       auto & e = st.top();
       if (e.first < alphSize || postRename[e.first - alphSize] != UINT64_MAX) { // leaf
         fbt_.PushBack(comp::kOP);
-        leaves_[leafPos++] = (e.first < alphSize) ? e.first : postRename[e.first - alphSize];
+        leaves[leafPos++] = (e.first < alphSize) ? e.first : postRename[e.first - alphSize];
         st.pop();
       } else if (e.second == 0) {
         e.second = 1;
@@ -381,6 +381,7 @@ public:
       }
     }
     fbt_.PushBack(comp::kCP);
+    leaves_.init(leaves);
     startVar_ = newName - 1;
   }
 
@@ -401,7 +402,7 @@ public:
       alph_[i] = slp.getChar(i);
     }
     numRules_ = slp.getNumRules();
-    leaves_.initNum(slp.getNumRules() + 1);
+    std::vector<uint64_t> leaves(slp.getNumRules() + 1);
     fbt_.Build(1024, 2, 2 * slp.getNumRules() + 2);
     std::vector<uint64_t> postRename(slp.getNumRules()); // rename by post-order
     for (uint64_t i = 0; i < postRename.size(); ++i) {
@@ -418,7 +419,7 @@ public:
         fbt_.PushBack(comp::kOP);
         sumLen += (e.first < alphSize) ? 1 : lenOfRule[e.first - alphSize];
         psum[leafPos] = sumLen;
-        leaves_[leafPos++] = (e.first < alphSize) ? e.first : postRename[e.first - alphSize];
+        leaves[leafPos++] = (e.first < alphSize) ? e.first : postRename[e.first - alphSize];
         st.pop();
       } else if (e.second == 0) {
         e.second = 1;
@@ -433,6 +434,7 @@ public:
       }
     }
     fbt_.PushBack(comp::kCP);
+    leaves_.init(leaves);
     startVar_ = newName - 1;
 
     // length

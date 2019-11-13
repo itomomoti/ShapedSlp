@@ -1,5 +1,5 @@
-#ifndef INCLUDE_GUARD_ShapedSlp
-#define INCLUDE_GUARD_ShapedSlp
+#ifndef INCLUDE_GUARD_ShapedSlp_Status
+#define INCLUDE_GUARD_ShapedSlp_Status
 
 #include <sys/stat.h>
 #include <iostream>
@@ -14,10 +14,12 @@
 #include <sdsl/vlc_vector.hpp>
 #include <sdsl/coder.hpp>
 
-// #define PRINT_STATUS_ShapedSlp
+
+#define PRINT_STATUS_ShapedSlp_Status
+
 
 /*!
- * @file ShapedSlp.hpp
+ * @file ShapedSlp_Status.hpp
  * @brief An SLP encoding that utilizes its shape-tree grammar
  * @author Tomohiro I
  * @date 2019-11-07
@@ -31,10 +33,10 @@ template
   class StgDivSelT,
   class SlpDivSelT
   >
-class ShapedSlp
+class ShapedSlp_Status
 {
 public:
-  //// Public constant, alias etc.
+  // Public constant, alias etc.
   using var_t = tparam_var_t;
 
 
@@ -58,12 +60,12 @@ private:
 
 
 public:
-  ShapedSlp
+  ShapedSlp_Status
   () : rs_(nullptr)
   {}
 
 
-  ShapedSlp
+  ShapedSlp_Status
   (
    const NaiveSlp<var_t> & slp,
    const bool freqSort = true
@@ -73,7 +75,7 @@ public:
   }
 
 
-  ~ShapedSlp() {
+  ~ShapedSlp_Status() {
     delete(rs_);
   }
 
@@ -133,6 +135,13 @@ public:
     const uint64_t stgId = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
     const uint64_t slpId = slpOffset + ((stgId == 0) ? 0 : slpDivSel_(stgId) + 1);
     const uint64_t leftLen = decLeftVarLen(varLen, vlcBalance_[stgId]);
+    // { // debug
+    //   std::cout << "h = " << h << ", stgDivSel_(h) = " << stgDivSel_(h) << ", slpDivSel_(stgId) = " << slpDivSel_(stgId) << ", stgId = " << stgId << ", slpId = " << slpId << ", leftLen = " << leftLen << std::endl;
+    //   if (varLen <= leftLen) {
+    //     std::cout << "varLen <= leftLen" << std::endl;
+    //     exit(1);
+    //   }
+    // }
     if (pos < leftLen) {
       return charAt(pos, leftLen, vlcStg_[2 * stgId], vlcSlp_[2 * slpId]);
     } else {
@@ -225,7 +234,7 @@ public:
   (
    const bool verbose = false
    ) const {
-    std::cout << "ShapedSlp object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
+    std::cout << "ShapedSlp_Status object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
     const size_t len = getLen();
     const size_t alphSize = getAlphSize();
     const size_t lenSeq = getLenSeq();
@@ -318,7 +327,7 @@ public:
       }
       std::cout << std::endl;
     }
-    std::cout << "ShapedSlp object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
+    std::cout << "ShapedSlp_Status object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
   }
 
 
@@ -528,10 +537,38 @@ private:
     std::vector<uint64_t> stglen(stg.getNumRules());
     stg.makeLenVec(stglen); // stglen is now: expansion lengths
 
-#ifdef PRINT_STATUS_ShapedSlp
+#ifdef PRINT_STATUS_ShapedSlp_Status
     {
       cout << "height = " << slp.calcHeight() << std::endl;
     }
+    // {
+    //   std::map<std::pair<uint64_t, uint64_t>, uint64_t> distr;
+    //   for (uint64_t i = 0; i < slp2stg.size(); ++i) {
+    //     {
+    //       const auto key = std::make_pair(stglen[slp2stg[i]], slp2stg[i] + 1);
+    //       auto itr = distr.find(key);
+    //       if (itr != distr.end()) {
+    //         ++(*itr).second;
+    //       } else {
+    //         distr.insert(std::make_pair(key, 1));
+    //       }
+    //     }
+    //     { // sum
+    //       const auto key = std::make_pair(stglen[slp2stg[i]], 0);
+    //       auto itr = distr.find(key);
+    //       if (itr != distr.end()) {
+    //         ++(*itr).second;
+    //       } else {
+    //         distr.insert(std::make_pair(key, 1));
+    //       }
+    //     }
+    //   }
+
+    //   std::ofstream ofs("distr.csv");
+    //   for (auto itr = distr.begin(); itr != distr.end(); ++itr) {
+    //     ofs << (itr->first).first << "," << (itr->first).second << "," << itr->second << std::endl;
+    //   }
+    // }
 #endif
 
     { // construct prefix sum data structure
@@ -558,6 +595,24 @@ private:
         keys.push_back(uint2Str(*itr));
       }
       rs_ = new sux::function::RecSplit<kLeaf>(keys, kBucketSize);
+      // { // debug check
+      //   // std::cout << "distLen.size() = " << distLen.size() << std::endl;
+      //   std::set<uint64_t> hashSet;
+      //   for (uint64_t i = 0; i < stglen.size(); ++i) {
+      //     hashSet.insert(hashLen(stglen[i]));
+      //   }
+      //   uint64_t i = 0;
+      //   for (auto itr = hashSet.begin(); itr != hashSet.end(); ++itr, ++i) {
+      //     if (*itr != i) {
+      //       std::cout << "error: *itr vs i = " << *itr << " vs " << i << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      //   if (i != distLen.size()) {
+      //     std::cout << "error: i vs distLen.size() " << i << ", " << distLen.size() << std::endl;
+      //     exit(1);
+      //   }
+      // }
     }
 
     std::vector<var_t> stgOrder(stg.getNumRules());
@@ -601,10 +656,26 @@ private:
       stgDiv[stg.getNumRules() - 1] = 1;
       stgOffset[stgOrder[stg.getNumRules() - 1]] = offset;
       stgDivSel_.init(std::move(stgDiv));
+
+      // { // debug check
+      //   // for (uint64_t i = 0; i < 1000; ++i) {
+      //   //   std::cout << i << ":" << hashVal[stgOrder[i]] << "(" << stgOffset[stgOrder[i]] << "), ";
+      //   // }
+      //   // std::cout << std::endl;
+      //   uint64_t hv = 0;
+      //   for (uint64_t i = 0; i < stg.getNumRules(); ++i) {
+      //     if (hashVal[stgOrder[i]] > hv + 1 || hv > hashVal[stgOrder[i]]) {
+      //       std::cout << "hv vs hashVal[stgOrder[i]] failed: " << hv << ", " << hashVal[stgOrder[i]] << std::endl;
+      //       exit(1);
+      //     }
+      //     hv = hashVal[stgOrder[i]];
+      //   }
+      // }
     }
 
     std::vector<var_t> slpOrder(slp.getNumRules());
     std::vector<var_t> slpOffset(slp.getNumRules());
+    std::vector<var_t> slp2stgRank(slp.getNumRules());
     {
       for (uint64_t i = 0; i < slpOrder.size(); ++i) {
         slpOrder[i] = i;
@@ -625,19 +696,19 @@ private:
         stgRank[stgOrder[i]] = i;
       }
       for (uint64_t i = 0; i < slpOrder.size(); ++i) {
-        slp2stg[i] = stgRank[slp2stg[i] - 1]; // replace stg with rank of stg (-1 to cancel a letter)
+        slp2stgRank[i] = stgRank[slp2stg[i] - 1]; // replace stg with rank of stg (-1 to cancel a letter)
       }
       std::stable_sort
         (
          slpOrder.begin(),
          slpOrder.end(),
-         [&](uint64_t x, uint64_t y) { return slp2stg[x] < slp2stg[y]; }
+         [&](uint64_t x, uint64_t y) { return slp2stgRank[x] < slp2stgRank[y]; }
          );
       sdsl::bit_vector slpDiv(slp.getNumRules(), 0);
       uint64_t offset = 0;
       for (uint64_t i = 0; i < slp.getNumRules() - 1; ++i) {
         slpOffset[slpOrder[i]] = offset++;
-        if (slp2stg[slpOrder[i]] == slp2stg[slpOrder[i+1]]) {
+        if (slp2stgRank[slpOrder[i]] == slp2stgRank[slpOrder[i+1]]) {
           slpDiv[i] = 0;
         } else {
           slpDiv[i] = 1;
@@ -660,6 +731,26 @@ private:
         df[stgpos] = encBal(varlen, leftvarlen);
       }
       vlcBalance_.init(df);
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+      {
+        uint64_t strictBitSize = 0;
+        for (uint64_t i = 0; i < dfsize; ++i) {
+          strictBitSize += ceilLog2((df[i] + 1)); // + 1 for gamma code
+        }
+        std::cout << "strictBitSize for vlcBalance_ = " << strictBitSize << std::endl;
+        std::cout << "@ dfsize = " << dfsize << std::endl;
+        std::cout << "@ strictBitSize / dfsize = " << (double)strictBitSize / dfsize << std::endl;
+      }
+      // { // debug check
+      //   for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      //     if (df[pos] != vlcBalance_[pos]) {
+      //       std::cout << pos << ": " << df[pos] << ", " << vlcBalance_[pos] << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      // }
+#endif
     }
 
     {
@@ -674,6 +765,26 @@ private:
         df[dfpos++] = (stgRightVar < stg.getAlphSize()) ? stgRightVar : stgOffset[stgRightVar - stg.getAlphSize()];
       }
       vlcStg_.init(df);
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+      {
+        uint64_t strictBitSize = 0;
+        for (uint64_t i = 0; i < dfsize; ++i) {
+          strictBitSize += ceilLog2((df[i] + 1)); // + 1 for gamma code
+        }
+        std::cout << "strictBitSize for vlcStg_ = " << strictBitSize << std::endl;
+        std::cout << "@ dfsize = " << dfsize << std::endl;
+        std::cout << "@ strictBitSize / dfsize = " << (double)strictBitSize / dfsize << std::endl;
+      }
+      // { // debug check
+      //   for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      //     if (df[pos] != vlcStg_[pos]) {
+      //       std::cout << pos << ": " << df[pos] << ", " << vlcStg_[pos] << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      // }
+#endif
     }
 
     {
@@ -690,6 +801,26 @@ private:
         }
       }
       vlcSlp_.init(df);
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+      {
+        uint64_t strictBitSize = 0;
+        for (uint64_t i = 0; i < dfsize; ++i) {
+          strictBitSize += ceilLog2((df[i] + 1)); // + 1 for gamma code
+        }
+        std::cout << "strictBitSize for vlcSlp_ = " << strictBitSize << std::endl;
+        std::cout << "@ dfsize = " << dfsize << std::endl;
+        std::cout << "@ strictBitSize / dfsize = " << (double)strictBitSize / dfsize << std::endl;
+      }
+      // { // debug check
+      //   for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      //     if (df[pos] != vlcSlp_[pos]) {
+      //       std::cout << pos << ": " << df[pos] << ", " << vlcSlp_[pos] << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      // }
+#endif
     }
 
     {
@@ -700,6 +831,26 @@ private:
         df[pos] = (stgVar < stg.getAlphSize()) ? stgVar : stgOffset[stgVar - stg.getAlphSize()];
       }
       vlcStgSeq_.init(df);
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+      {
+        uint64_t strictBitSize = 0;
+        for (uint64_t i = 0; i < dfsize; ++i) {
+          strictBitSize += ceilLog2((df[i] + 1)); // + 1 for gamma code
+        }
+        std::cout << "strictBitSize for vlcStgSeq_ = " << strictBitSize << std::endl;
+        std::cout << "@ dfsize = " << dfsize << std::endl;
+        std::cout << "@ strictBitSize / dfsize = " << (double)strictBitSize / dfsize << std::endl;
+      }
+      // { // debug check
+      //   for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      //     if (df[pos] != vlcStgSeq_[pos]) {
+      //       std::cout << pos << ": " << df[pos] << ", " << vlcStgSeq_[pos] << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      // }
+#endif
     }
 
     {
@@ -710,7 +861,73 @@ private:
         df[pos] = (slpVar < slp.getAlphSize()) ? slpVar : slpOffset[slpVar - slp.getAlphSize()];
       }
       vlcSlpSeq_.init(df);
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+      {
+        uint64_t strictBitSize = 0;
+        for (uint64_t i = 0; i < dfsize; ++i) {
+          strictBitSize += ceilLog2((df[i] + 1)); // + 1 for gamma code
+        }
+        std::cout << "strictBitSize for vlcSlpSeq_ = " << strictBitSize << std::endl;
+        std::cout << "@ dfsize = " << dfsize << std::endl;
+        std::cout << "@ strictBitSize / dfsize = " << (double)strictBitSize / dfsize << std::endl;
+      }
+      // { // debug check
+      //   for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      //     if (df[pos] != vlcSlpSeq_[pos]) {
+      //       std::cout << pos << ": " << df[pos] << ", " << vlcSlpSeq_[pos] << std::endl;
+      //       exit(1);
+      //     }
+      //   }
+      // }
+#endif
     }
+
+#ifdef PRINT_STATUS_ShapedSlp_Status
+    {
+      std::stable_sort
+        (
+         stgOrder.begin(),
+         stgOrder.end(),
+         [&](uint64_t x, uint64_t y) { return stglen[x] < stglen[y]; }
+         );
+      std::vector<var_t> stgRank(stg.getNumRules());
+      for (uint64_t i = 0; i < stgOrder.size(); ++i) {
+        stgRank[stgOrder[i]] = i;
+      }
+
+      std::vector<uint64_t> ruleFreq(slp.getNumRules());
+      std::vector<uint64_t> alphFreq(slp.getAlphSize());
+      slp.makeFreqInRulesVec(ruleFreq, alphFreq);
+      std::stable_sort
+        (
+         slpOrder.begin(),
+         slpOrder.end(),
+         [&](uint64_t x, uint64_t y) { return stgRank[slp2stg[x]] < stgRank[slp2stg[y]]; }
+         );
+
+      // std::cout << "alphFreq:" << std::endl;
+      // std::sort(alphFreq.begin(), alphFreq.end());
+      // printVec(alphFreq);
+
+      std::vector<var_t> slpOffset1(slp.getNumRules());
+      uint64_t offset = 0;
+      slpOffset1[slpOrder[0]] = offset++;
+      for (uint64_t i = 1; i < slp.getNumRules(); ++i) {
+        if (stglen[slp2stg[slpOrder[i]]] != stglen[slp2stg[slpOrder[i-1]]]) {
+          offset = 0;
+        }
+        slpOffset1[slpOrder[i]] = offset++;
+      }
+
+      std::ofstream ofs("distr1.csv");
+      for (uint64_t i = 0; i < slpOrder.size(); ++i) {
+        const uint64_t slpId = slpOrder[i];
+        const uint64_t stgId = slp2stg[slpId];
+        ofs << stglen[stgId] << "," << ruleFreq[slpId] << "," << slpOffset1[slpId] << "," << slpOffset[slpId] << "," << stgOffset[stgId] << std::endl;
+      }
+    }
+#endif
   }
 };
 

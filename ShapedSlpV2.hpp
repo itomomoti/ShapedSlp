@@ -1,5 +1,5 @@
-#ifndef INCLUDE_GUARD_ShapedSlp
-#define INCLUDE_GUARD_ShapedSlp
+#ifndef INCLUDE_GUARD_ShapedSlpV2
+#define INCLUDE_GUARD_ShapedSlpV2
 
 #include <sys/stat.h>
 #include <iostream>
@@ -14,10 +14,9 @@
 #include <sdsl/vlc_vector.hpp>
 #include <sdsl/coder.hpp>
 
-// #define PRINT_STATUS_ShapedSlp
 
 /*!
- * @file ShapedSlp.hpp
+ * @file ShapedSlpV2.hpp
  * @brief An SLP encoding that utilizes its shape-tree grammar
  * @author Tomohiro I
  * @date 2019-11-07
@@ -25,13 +24,11 @@
 template
 <
   typename tparam_var_t,
-  class StgDacT,
-  class SlpDacT,
-  class BalDacT,
+  class DacT,
   class StgDivSelT,
   class SlpDivSelT
   >
-class ShapedSlp
+class ShapedSlpV2
 {
 public:
   //// Public constant, alias etc.
@@ -49,31 +46,28 @@ private:
   sdsl::sd_vector<>::select_1_type seqSel_;
   StgDivSelT stgDivSel_;
   SlpDivSelT slpDivSel_;
-  BalDacT vlcBalance_;
-  StgDacT vlcStgSeq_;
-  SlpDacT vlcSlpSeq_;
-  StgDacT vlcStg_;
-  SlpDacT vlcSlp_;
-  sux::function::RecSplit<kLeaf> * rs_; // minimal perfect hash: from "expansion lengths" to IDs for them
+  DacT vlcSeq_;
+  DacT vlc_;
+  sux::function::RecSplit<kLeaf> * rs_; // minimal perfect hash: map from "expansion lengths" to IDs for them
 
 
 public:
-  ShapedSlp
+  ShapedSlpV2
   () : rs_(nullptr)
   {}
 
 
-  ShapedSlp
+  ShapedSlpV2
   (
    const NaiveSlp<var_t> & slp,
    const bool freqSort = true
    ) : rs_(nullptr)
   {
-    makeShapedSlp(slp, freqSort);
+    makeShapedSlp(slp);
   }
 
 
-  ~ShapedSlp() {
+  ~ShapedSlpV2() {
     delete(rs_);
   }
 
@@ -89,7 +83,7 @@ public:
 
 
   size_t getLenSeq() const {
-    return vlcStgSeq_.size();
+    return vlcSeq_.size() / 2;
   }
 
 
@@ -112,13 +106,13 @@ public:
     const uint64_t seqPos = seqRank_(pos + 1);
     const uint64_t varLen = lenOfSeqAt(seqPos);
     const uint64_t prevSum = (seqPos > 0) ? seqSel_(seqPos) : 0;
-    return charAt(pos - prevSum, varLen, vlcStgSeq_[seqPos], vlcSlpSeq_[seqPos]);
+    return charAt(pos - prevSum, varLen, vlcSeq_[2 * seqPos], vlcSeq_[2 * seqPos + 1]);
   }
 
 
   char charAt
   (
-   const uint64_t pos, //!< relative position in a variable
+   const uint64_t pos, //!< 0-based relative position in a variable
    const uint64_t varLen, //!< expansion length of the variable
    const var_t stgOffset, //!< stg offset for the variable
    const var_t slpOffset //!< slp offset for the variable 
@@ -130,20 +124,21 @@ public:
       return alph_[slpOffset];
     }
     const uint64_t h = hashLen(varLen);
-    const uint64_t stgId = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
-    const uint64_t slpId = slpOffset + ((stgId == 0) ? 0 : slpDivSel_(stgId) + 1);
-    const uint64_t leftLen = decLeftVarLen(varLen, vlcBalance_[stgId]);
+    const uint64_t stgNum = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
+    const uint64_t slpNum = (stgNum == 0) ? 0 : slpDivSel_(stgNum) + 1;
+    const uint64_t vlcPos = 3 * stgNum + 2 * slpNum;
+    const uint64_t leftLen = decLeftVarLen(varLen, vlc_[vlcPos]);
     if (pos < leftLen) {
-      return charAt(pos, leftLen, vlcStg_[2 * stgId], vlcSlp_[2 * slpId]);
+      return charAt(pos, leftLen, vlc_[vlcPos + 1], vlc_[vlcPos + 3 + 2 * slpOffset]);
     } else {
-      return charAt(pos - leftLen, varLen - leftLen, vlcStg_[2 * stgId + 1], vlcSlp_[2 * slpId + 1]);
+      return charAt(pos - leftLen, varLen - leftLen, vlc_[vlcPos + 2], vlc_[vlcPos + 4 + 2 * slpOffset]);
     }
   }
 
 
   void expandSubstr
   (
-   const uint64_t pos, //!< beginning position
+   const uint64_t pos, //!< 0-based beginning position
    uint64_t len, //!< length to expand
    char * str //!< [out] must have length at least 'len'
    ) const {
@@ -154,19 +149,19 @@ public:
     uint64_t seqPos = seqRank_(pos + 1);
     const uint64_t varLen = lenOfSeqAt(seqPos);
     const uint64_t prevSum = (seqPos > 0) ? seqSel_(seqPos) : 0;
-    expandSubstr(pos - prevSum, len, str, varLen, vlcStgSeq_[seqPos], vlcSlpSeq_[seqPos]);
+    expandSubstr(pos - prevSum, len, str, varLen, vlcSeq_[2 * seqPos], vlcSeq_[2 * seqPos + 1]);
     for (uint64_t maxExLen = prevSum + varLen - pos; maxExLen < len; ) {
       len -= maxExLen;
       str += maxExLen;
       maxExLen = lenOfSeqAt(++seqPos);
-      expandPref(len, str, maxExLen, vlcStgSeq_[seqPos], vlcSlpSeq_[seqPos]);
+      expandPref(len, str, maxExLen, vlcSeq_[2 * seqPos], vlcSeq_[2 * seqPos + 1]);
     }
   }
 
 
   void expandSubstr
   (
-   const uint64_t pos, //!< beginning position (relative in variable)
+   const uint64_t pos, //!< 0-based beginning position (relative in variable)
    const uint64_t len, //!< length to expand
    char * str, //!< [out] must have length at least 'len'
    const uint64_t varLen, //!< expansion length of the variable
@@ -181,16 +176,17 @@ public:
       return;
     }
     const uint64_t h = hashLen(varLen);
-    const uint64_t stgId = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
-    const uint64_t slpId = slpOffset + ((stgId == 0) ? 0 : slpDivSel_(stgId) + 1);
-    const uint64_t leftLen = decLeftVarLen(varLen, vlcBalance_[stgId]);
+    const uint64_t stgNum = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
+    const uint64_t slpNum = (stgNum == 0) ? 0 : slpDivSel_(stgNum) + 1;
+    const uint64_t vlcPos = 3 * stgNum + 2 * slpNum;
+    const uint64_t leftLen = decLeftVarLen(varLen, vlc_[vlcPos]);
     if (pos < leftLen) {
-      expandSubstr(pos, len, str, leftLen, vlcStg_[2 * stgId], vlcSlp_[2 * slpId]);
+      expandSubstr(pos, len, str, leftLen, vlc_[vlcPos + 1], vlc_[vlcPos + 3 + 2 * slpOffset]);
       if (leftLen - pos < len) {
-        expandPref(len - (leftLen - pos), str + (leftLen - pos), varLen - leftLen, vlcStg_[2 * stgId + 1], vlcSlp_[2 * slpId + 1]);
+        expandPref(len - (leftLen - pos), str + (leftLen - pos), varLen - leftLen, vlc_[vlcPos + 2], vlc_[vlcPos + 4 + 2 * slpOffset]);
       }
     } else {
-      expandSubstr(pos - leftLen, len, str, varLen - leftLen, vlcStg_[2 * stgId + 1], vlcSlp_[2 * slpId + 1]);
+      expandSubstr(pos - leftLen, len, str, varLen - leftLen, vlc_[vlcPos + 2], vlc_[vlcPos + 4 + 2 * slpOffset]);
     }
   }
 
@@ -211,12 +207,13 @@ public:
       return;
     }
     const uint64_t h = hashLen(varLen);
-    const uint64_t stgId = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
-    const uint64_t slpId = slpOffset + ((stgId == 0) ? 0 : slpDivSel_(stgId) + 1);
-    const uint64_t leftLen = decLeftVarLen(varLen, vlcBalance_[stgId]);
-    expandPref(len, str, leftLen, vlcStg_[2 * stgId], vlcSlp_[2 * slpId]);
+    const uint64_t stgNum = stgOffset + ((h == 0) ? 0 : stgDivSel_(h) + 1);
+    const uint64_t slpNum = (stgNum == 0) ? 0 : slpDivSel_(stgNum) + 1;
+    const uint64_t vlcPos = 3 * stgNum + 2 * slpNum;
+    const uint64_t leftLen = decLeftVarLen(varLen, vlc_[vlcPos]);
+    expandPref(len, str, leftLen, vlc_[vlcPos + 1], vlc_[vlcPos + 3 + 2 * slpOffset]);
     if (len > leftLen) {
-      expandPref(len - leftLen, str + leftLen, varLen - leftLen, vlcStg_[2 * stgId + 1], vlcSlp_[2 * slpId + 1]);
+      expandPref(len - leftLen, str + leftLen, varLen - leftLen, vlc_[vlcPos + 2], vlc_[vlcPos + 4 + 2 * slpOffset]);
     }
   }
 
@@ -225,7 +222,7 @@ public:
   (
    const bool verbose = false
    ) const {
-    std::cout << "ShapedSlp object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
+    std::cout << "ShapedSlpV2 object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
     const size_t len = getLen();
     const size_t alphSize = getAlphSize();
     const size_t lenSeq = getLenSeq();
@@ -240,43 +237,28 @@ public:
 
     const size_t bytesAlphSize = sizeof(std::vector<char>) + (sizeof(char) * alph_.size());
     const size_t bytesSeqSBV = sdsl::size_in_bytes(seqSBV_);
-    const size_t bytesVlcBalance = vlcBalance_.calcMemBytes();
-    const size_t bytesVlcStg = vlcStg_.calcMemBytes();
-    const size_t bytesVlcStgSeq = vlcStgSeq_.calcMemBytes();
-    const size_t bytesVlcSlp = vlcSlp_.calcMemBytes();
-    const size_t bytesVlcSlpSeq = vlcSlpSeq_.calcMemBytes();
+    const size_t bytesVlcSeq = vlcSeq_.calcMemBytes();
+    const size_t bytesVlc = vlc_.calcMemBytes();
     const size_t bytesStgDivSel = stgDivSel_.calcMemBytes();
     const size_t bytesSlpDivSel = slpDivSel_.calcMemBytes();
 
     const size_t bytesMph = calcMemBytesOfMph();
-    const size_t bytesSlp = calcMemBytesOfSlp();
-    const size_t bytesStg = calcMemBytesOfStg();
+    const size_t bytesTotal = bytesMph + bytesSeqSBV + bytesVlcSeq + bytesVlc + bytesStgDivSel + bytesSlpDivSel + bytesAlphSize;
     const size_t bytesEstStgWithLen = estimateEncSizeOfStgWithLen();
     const size_t bytesEstSlpWithLen = estimateEncSizeOfSlpWithLen();
     const size_t bytesEstSlp = estimateEncSizeOfSlp();
     std::cout << "Sizes (bytes) for various approach (small o() term is ignored for the ones with est.)" << std::endl;
-    std::cout << "New encoding = " << bytesMph + bytesSlp + bytesStg << std::endl;
-    std::cout << "| Shaped Stg = " << bytesMph + bytesStg << std::endl;
-    std::cout << "| | MPH = " << bytesMph << std::endl;
-    std::cout << "| | * MPH / numDistLen = " << (double) bytesMph / numDistLen << std::endl;
-    std::cout << "| | seqSBV = " << bytesSeqSBV << std::endl;
-    std::cout << "| | vlcBalance = " << bytesVlcBalance << std::endl;
-    std::cout << "| | * vlcBalance / numRulesOfStg = " << (double)bytesVlcBalance / numRulesOfStg << std::endl;
-    std::cout << "| | vlcStg = " << bytesVlcStg << std::endl;
-    std::cout << "| | * vlcStg / (2 * numRulesOfStg) = " << (double)bytesVlcStg / (2 * numRulesOfStg) << std::endl;
-    std::cout << "| | vlcStgSeq = " << bytesVlcStgSeq << std::endl;
-    std::cout << "| | | vlcStgSeq / lenSeq = " << (double)bytesVlcStgSeq / lenSeq << std::endl;
-    std::cout << "| | stgDiv = " << bytesStgDivSel << std::endl;
-    std::cout << "| Shaped Slp = " << bytesSlp << std::endl;
-    std::cout << "| | alph = " << bytesAlphSize << std::endl;
-    std::cout << "| | vlcSlp = " << bytesVlcSlp << std::endl;
-    std::cout << "| | * vlcSlp / (2 * numRulesOfSlp) = " << (double)bytesVlcSlp / (2 * numRulesOfSlp) << std::endl;
-    std::cout << "| | vlcSlpSeq = " << bytesVlcSlpSeq << std::endl;
-    std::cout << "| | * vlcSlpSeq / lenSeq = " << (double)bytesVlcSlpSeq / lenSeq << std::endl;
-    std::cout << "| | slpDiv = " << bytesSlpDivSel << std::endl;
-    std::cout << "MaruyamaEnc of Stg + Shaped Slp (est.) = " << bytesEstStgWithLen + bytesSlp << std::endl;
-    std::cout << "| MaruyamaEnc of Stg (est.) = " << bytesEstStgWithLen << std::endl;
-    std::cout << "| Shaped Slp = " << bytesSlp << std::endl;
+    std::cout << "New encoding = " << bytesTotal << std::endl;
+    std::cout << "| MPH = " << bytesMph << std::endl;
+    std::cout << "| | MPH / numDistLen = " << (double) bytesMph / numDistLen << std::endl;
+    std::cout << "| seqSBV = " << bytesSeqSBV << std::endl;
+    std::cout << "| vlcSeq = " << bytesVlcSeq << std::endl;
+    std::cout << "| | vlcSeq per entry = " << (double)bytesVlcSeq / (2 * lenSeq) << std::endl;
+    std::cout << "| vlcRules = " << bytesVlc << std::endl;
+    std::cout << "| | vlcRules per entry = " << (double)bytesVlc / (3 * numRulesOfStg + 2 * numRulesOfSlp) << std::endl;
+    std::cout << "| stgDiv = " << bytesStgDivSel << std::endl;
+    std::cout << "| slpDiv = " << bytesSlpDivSel << std::endl;
+    std::cout << "| alph = " << bytesAlphSize << std::endl;
     std::cout << "MaruyamaEnc of Stg + POSLP (est.) = " << bytesEstStgWithLen + bytesEstSlp << std::endl;
     std::cout << "| MaruyamaEnc of Stg (est.) = " << bytesEstStgWithLen << std::endl;
     std::cout << "| POSLP (est.) = " << bytesEstSlp << std::endl;
@@ -285,19 +267,10 @@ public:
       std::cout << "alph_" << std::endl;
       printVec(alph_);
       std::cout << std::endl;
-      std::cout << "vlcStg_" << std::endl;
-      printVec(vlcStg_);
-      std::cout << "vlcSlp_" << std::endl;
-      printVec(vlcSlp_);
-      std::cout << "vlcBalance_" << std::endl;
-      for (uint64_t i = 0; i < getNumRulesOfStg(); ++i) {
-        std::cout << "(" << i << ":" << (vlcBalance_[i] & 1) << " " << (vlcBalance_[i] >> 1) << ") ";
-      }
-      std::cout << std::endl;
-      std::cout << "vlcStgSeq_" << std::endl;
-      printVec(vlcStgSeq_);
-      std::cout << "vlcSlpSeq_" << std::endl;
-      printVec(vlcSlpSeq_);
+      std::cout << "vlc_" << std::endl;
+      printVec(vlc_);
+      std::cout << "vlcSeq_" << std::endl;
+      printVec(vlcSeq_);
       std::cout << "hash_" << std::endl;
       for (uint64_t i = 0; i < getLen(); ++i) {
         std::cout << "(" << i << ":" << hashLen(i) << ") ";
@@ -318,7 +291,7 @@ public:
       }
       std::cout << std::endl;
     }
-    std::cout << "ShapedSlp object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
+    std::cout << "ShapedSlpV2 object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
   }
 
 
@@ -331,25 +304,6 @@ public:
     struct stat s;
     stat(fname, &s);
     return s.st_size;
-  }
-
-
-  size_t calcMemBytesOfSlp() const {
-    size_t bytesAlphSize = sizeof(std::vector<char>) + (sizeof(char) * alph_.size());
-    size_t bytesVlcSlp = vlcSlp_.calcMemBytes();
-    size_t bytesVlcSlpSeq = vlcSlpSeq_.calcMemBytes();
-    size_t bytesSlpDiv = slpDivSel_.calcMemBytes();
-    return bytesAlphSize + bytesVlcSlp + bytesVlcSlpSeq + bytesSlpDiv;
-  }
-
-
-  size_t calcMemBytesOfStg() const {
-    size_t bytesSeqSBV = sdsl::size_in_bytes(seqSBV_);
-    size_t bytesVlcBalance = vlcBalance_.calcMemBytes();
-    size_t bytesVlcStg = vlcStg_.calcMemBytes();
-    size_t bytesVlcStgSeq = vlcStgSeq_.calcMemBytes();
-    size_t bytesStgDiv = stgDivSel_.calcMemBytes();
-    return bytesSeqSBV + bytesVlcBalance + bytesVlcStg + bytesVlcStgSeq + bytesStgDiv;
   }
 
 
@@ -401,11 +355,8 @@ public:
     seqSel_.load(in);
     stgDivSel_.load(in);
     slpDivSel_.load(in);
-    vlcBalance_.load(in);
-    vlcStgSeq_.load(in);
-    vlcSlpSeq_.load(in);
-    vlcStg_.load(in);
-    vlcSlp_.load(in);
+    vlcSeq_.load(in);
+    vlc_.load(in);
 
     seqRank_.set_vector(&seqSBV_);
     seqSel_.set_vector(&seqSBV_);
@@ -427,11 +378,8 @@ public:
     seqSel_.serialize(out);
     stgDivSel_.serialize(out);
     slpDivSel_.serialize(out);
-    vlcBalance_.serialize(out);
-    vlcStgSeq_.serialize(out);
-    vlcSlpSeq_.serialize(out);
-    vlcStg_.serialize(out);
-    vlcSlp_.serialize(out);
+    vlcSeq_.serialize(out);
+    vlc_.serialize(out);
   }
 
   
@@ -528,12 +476,6 @@ private:
     std::vector<uint64_t> stglen(stg.getNumRules());
     stg.makeLenVec(stglen); // stglen is now: expansion lengths
 
-#ifdef PRINT_STATUS_ShapedSlp
-    {
-      cout << "height = " << slp.calcHeight() << std::endl;
-    }
-#endif
-
     { // construct prefix sum data structure
       sdsl::int_vector<64> psum(slp.getLenSeq());
       uint64_t s = 0;
@@ -551,10 +493,8 @@ private:
       for (uint64_t i = 0; i < stglen.size(); ++i) {
         distLen.insert(stglen[i]);
       }
-      // std::vector<sux::function::hash128_t> keys;
       std::vector<std::string> keys;
       for (auto itr = distLen.begin(); itr != distLen.end(); ++itr) {
-        // keys.push_back(sux::function::hash128_t(0, *itr));
         keys.push_back(uint2Str(*itr));
       }
       rs_ = new sux::function::RecSplit<kLeaf>(keys, kBucketSize);
@@ -650,38 +590,20 @@ private:
     }
 
     {
-      const uint64_t dfsize = stg.getNumRules();
-      std::vector<uint64_t> df(dfsize);
-      for (uint64_t stgpos = 0; stgpos < stg.getNumRules(); ++stgpos) {
-        const uint64_t stgRuleId = stgOrder[stgpos]; // in [0..stg.getNumRules())
-        const uint64_t stgLeftVar = stg.getLeft(stgRuleId); // in [0..stg.getNumRules() + stg.getAlphSize())
-        const uint64_t varlen = stglen[stgRuleId];
-        const uint64_t leftvarlen = stg.getLenOfVar(stgLeftVar, stglen);
-        df[stgpos] = encBal(varlen, leftvarlen);
-      }
-      vlcBalance_.init(df);
-    }
-
-    {
-      const uint64_t dfsize = 2 * stg.getNumRules();
+      const uint64_t dfsize = 3 * stg.getNumRules() + 2 * slp.getNumRules();
       std::vector<uint64_t> df(dfsize);
       uint64_t dfpos = 0;
+      uint64_t slppos = 0;
       for (uint64_t stgpos = 0; stgpos < stg.getNumRules(); ++stgpos) {
         const uint64_t stgRuleId = stgOrder[stgpos]; // in [0..stg.getNumRules())
         const uint64_t stgLeftVar = stg.getLeft(stgRuleId); // in [0..stg.getNumRules() + stg.getAlphSize())
         const uint64_t stgRightVar = stg.getRight(stgRuleId); // in [0..stg.getNumRules() + stg.getAlphSize())
+        const uint64_t varlen = stglen[stgRuleId];
+        const uint64_t leftvarlen = stg.getLenOfVar(stgLeftVar, stglen);
+        df[dfpos++] = encBal(varlen, leftvarlen);
         df[dfpos++] = (stgLeftVar < stg.getAlphSize()) ? stgLeftVar : stgOffset[stgLeftVar - stg.getAlphSize()];
-        df[dfpos++] = (stgRightVar < stg.getAlphSize()) ? stgRightVar : stgOffset[stgRightVar - stg.getAlphSize()];
-      }
-      vlcStg_.init(df);
-    }
-
-    {
-      const uint64_t dfsize = 2 * slp.getNumRules();
-      std::vector<uint64_t> df(dfsize);
-      uint64_t dfpos = 0;
-      for (uint64_t slppos = 0; slppos < slp.getNumRules(); ++slppos) {
-        {
+        df[dfpos++] = (stgRightVar < stg.getAlphSize()) ? stgRightVar : stgOffset[stgRightVar - stg.getAlphSize()];        
+        for (const uint64_t nextSlpPos = slpDivSel_(stgpos + 1) + 1; slppos < nextSlpPos; ++slppos) {
           const uint64_t slpRuleId = slpOrder[slppos]; // in [0..slp.getNumRules())
           const uint64_t slpLeftVar = slp.getLeft(slpRuleId); // in [0..slp.getNumRules() + slp.getAlphSize())
           const uint64_t slpRightVar = slp.getRight(slpRuleId); // in [0..slp.getNumRules() + slp.getAlphSize())
@@ -689,27 +611,19 @@ private:
           df[dfpos++] = (slpRightVar < slp.getAlphSize()) ? slpRightVar : slpOffset[slpRightVar - slp.getAlphSize()];
         }
       }
-      vlcSlp_.init(df);
+      vlc_.init(df);
     }
 
     {
-      const uint64_t dfsize = slp.getLenSeq();
+      const uint64_t dfsize = 2 * slp.getLenSeq();
       std::vector<uint64_t> df(dfsize);
-      for (uint64_t pos = 0; pos < dfsize; ++pos) {
+      for (uint64_t pos = 0; pos < dfsize / 2; ++pos) {
         const uint64_t stgVar = stg.getSeq(pos);
-        df[pos] = (stgVar < stg.getAlphSize()) ? stgVar : stgOffset[stgVar - stg.getAlphSize()];
-      }
-      vlcStgSeq_.init(df);
-    }
-
-    {
-      const uint64_t dfsize = slp.getLenSeq();
-      std::vector<uint64_t> df(dfsize);
-      for (uint64_t pos = 0; pos < dfsize; ++pos) {
+        df[2 * pos] = (stgVar < stg.getAlphSize()) ? stgVar : stgOffset[stgVar - stg.getAlphSize()];
         const uint64_t slpVar = slp.getSeq(pos);
-        df[pos] = (slpVar < slp.getAlphSize()) ? slpVar : slpOffset[slpVar - slp.getAlphSize()];
+        df[2 * pos + 1] = (slpVar < slp.getAlphSize()) ? slpVar : slpOffset[slpVar - slp.getAlphSize()];
       }
-      vlcSlpSeq_.init(df);
+      vlcSeq_.init(df);
     }
   }
 };
