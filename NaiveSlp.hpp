@@ -25,7 +25,10 @@
 /*!
  * @brief NaiveSlp
  */
-template<typename tparam_var_t>
+template
+<
+  typename tparam_var_t
+  >
 class NaiveSlp
 {
 public:
@@ -33,8 +36,9 @@ public:
   using var_t = tparam_var_t;
 
 
+private:
   std::vector<var_t> seq_; // final sequence of text
-  std::vector<Tpair<var_t>> rules_; // rules
+  std::vector<PairT<var_t>> rules_; // rules
   std::vector<char> alph_; // map from terminal IDs to actual characters
 
 
@@ -82,9 +86,9 @@ public:
       fprintf(stderr, "Error: cannot read file %s\n", fname);
       exit(1);
     }
-    const uint64_t numRules = (len - sizeof(int) - alphSize) / sizeof(Tpair<var_t>);
+    const uint64_t numRules = (len - sizeof(int) - alphSize) / sizeof(PairT<var_t>);
     rules_.resize(numRules);
-    if (fread(rules_.data(), sizeof(Tpair<var_t>), numRules, Rf) != numRules) { // read rules
+    if (fread(rules_.data(), sizeof(PairT<var_t>), numRules, Rf) != numRules) { // read rules
       fprintf(stderr, "Error: cannot read file %s\n", fname);
       exit(1);
     }
@@ -142,9 +146,9 @@ public:
     for (uint64_t i = 0; i < alph_.size(); ++i) {
       alph_[i] = i;
     }
-    const uint64_t numRules = (len - sizeof(int)) / sizeof(Tpair<var_t>);
+    const uint64_t numRules = (len - sizeof(int)) / sizeof(PairT<var_t>);
     rules_.resize(numRules);
-    if (fread(rules_.data(), sizeof(Tpair<var_t>), numRules, Rf) != numRules) { // read rules
+    if (fread(rules_.data(), sizeof(PairT<var_t>), numRules, Rf) != numRules) { // read rules
       fprintf(stderr, "Error: cannot read file %s\n", fname);
       exit(1);
     }
@@ -227,7 +231,7 @@ public:
   }
 
 
-  void pushPair(Tpair<var_t> p) {
+  void pushPair(PairT<var_t> p) {
     rules_.push_back(p);
   }
 
@@ -242,7 +246,7 @@ public:
   }
 
 
-  void setRule(uint64_t i, Tpair<var_t> p) {
+  void setRule(uint64_t i, PairT<var_t> p) {
     setLeft(i, p.left);
     setRight(i, p.right);
   }
@@ -370,7 +374,7 @@ public:
       const bool r = len % 2;
       for (uint64_t i = 0; i < n; ++i) {
         const var_t newId = getNumRules() + getAlphSize();
-        Tpair<var_t> p;
+        PairT<var_t> p;
         p.left = seq_[2 * i];
         p.right = seq_[2 * i + 1];
         pushPair(p);

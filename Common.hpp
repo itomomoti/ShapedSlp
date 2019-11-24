@@ -9,11 +9,11 @@
 #include <stack>
 
 template<typename var_t>
-struct Tpair
+struct PairT
 {
   var_t left, right;
 
-  bool operator<(const Tpair & another) const
+  bool operator<(const PairT & another) const
   {
     return (this->left < another.left) || ((this->left == another.left) && this->right < another.right);
   };

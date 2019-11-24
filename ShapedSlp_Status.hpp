@@ -511,9 +511,9 @@ private:
       stg.setChar(0, '!'); // for printing
       uint64_t numRules = 0;
 
-      std::map<Tpair<var_t>, var_t> p2stg;
+      std::map<PairT<var_t>, var_t> p2stg;
       for (uint64_t i = 0; i < slp.getNumRules(); ++i) { // assumption: each variable refers to smaller variables
-        Tpair<var_t> p;
+        PairT<var_t> p;
         p.left = (slp.getLeft(i) < slp.getAlphSize()) ? 0 : slp2stg[slp.getLeft(i) - slp.getAlphSize()];
         p.right = (slp.getRight(i) < slp.getAlphSize()) ? 0 : slp2stg[slp.getRight(i) - slp.getAlphSize()];
         uint64_t val;
