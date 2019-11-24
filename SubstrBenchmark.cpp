@@ -3,6 +3,7 @@
 #include <queue>
 #include "cmdline.h"
 #include "Common.hpp"
+#include "PlainSlp.hpp"
 #include "PoSlp.hpp"
 #include "ShapedSlp_Status.hpp"
 #include "ShapedSlp.hpp"
@@ -77,6 +78,7 @@ void measure
 
 int main(int argc, char* argv[])
 {
+  using Fiv = IntVec<>;
   using SelSd = SelectSdvec<>;
   using SelMcl = SelectMcl<>;
   using DagcSd = DirectAccessibleGammaCode<SelSd>;
@@ -94,6 +96,11 @@ int main(int argc, char* argv[])
                           const bool dummy_flag
                           )>;
   funcs_type funcs;
+
+  //// PlainSlp
+  funcs.insert(make_pair("PlainSlp_FivFiv", measure<PlainSlp<var_t, Fiv, Fiv>>));
+  funcs.insert(make_pair("PlainSlp_IblcFiv", measure<PlainSlp<var_t, IncBitLenCode, Fiv>>));
+  funcs.insert(make_pair("PlainSlp_32Fiv", measure<PlainSlp<var_t, IntVec<32>, Fiv>>));
 
   //// PoSlp: Post-order SLP
   //// Sometimes PoSlp_Sd is better than PoSlp_Iblc

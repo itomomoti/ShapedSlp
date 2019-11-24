@@ -3,6 +3,7 @@
 #include <queue>
 #include "cmdline.h"
 #include "Common.hpp"
+#include "PlainSlp.hpp"
 #include "PoSlp.hpp"
 #include "ShapedSlp_Status.hpp"
 #include "ShapedSlp.hpp"
@@ -71,9 +72,35 @@ void measure_PoSlp
   cout << "time to serialize (ms): " << duration_cast<milliseconds>(stop-start).count() << endl;
 }
 
+template
+<
+  class SlpT
+  >
+void measure_PlainSlp
+(
+ const NaiveSlp<var_t> & slp,
+ std::string out
+) {
+  NaiveSlp<var_t> temp(slp);
+  auto start = timer::now();
+  temp.makeBinaryTree();
+  SlpT pslp;
+  pslp.init(temp);
+  auto stop = timer::now();
+  cout << "time to encode (ms): " << duration_cast<milliseconds>(stop-start).count() << endl;
+  pslp.printStatus();
+
+  start = timer::now();
+  ofstream fs(out);
+  pslp.serialize(fs);
+  stop = timer::now();
+  cout << "time to serialize (ms): " << duration_cast<milliseconds>(stop-start).count() << endl;
+}
+
 
 int main(int argc, char* argv[])
 {
+  using Fiv = IntVec<>;
   using SelSd = SelectSdvec<>;
   using SelMcl = SelectMcl<>;
   using DagcSd = DirectAccessibleGammaCode<SelSd>;
@@ -87,6 +114,11 @@ int main(int argc, char* argv[])
                           std::string out
                           )>;
   funcs_type funcs;
+
+  //// PlainSlp
+  funcs.insert(make_pair("PlainSlp_FivFiv", measure_PlainSlp<PlainSlp<var_t, Fiv, Fiv>>));
+  funcs.insert(make_pair("PlainSlp_IblcFiv", measure_PlainSlp<PlainSlp<var_t, IncBitLenCode, Fiv>>));
+  funcs.insert(make_pair("PlainSlp_32Fiv", measure_PlainSlp<PlainSlp<var_t, IntVec<32>, Fiv>>));
 
   //// PoSlp: Post-order SLP
   //// Sometimes PoSlp_Sd is better than PoSlp_Iblc
