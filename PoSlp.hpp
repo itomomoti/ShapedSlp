@@ -27,9 +27,6 @@ public:
 
 
 private:
-  static constexpr size_t kBucketSize = 100;
-  static constexpr size_t kLeaf = 8;
-
   size_t len_;
   size_t numRules_;
   var_t startVar_;
@@ -105,11 +102,6 @@ public:
 
   var_t getSeq(uint64_t i) const {
     return startVar_;
-  }
-
-
-  size_t getNumRulesOfStg() const {
-    return alph_.size();
   }
 
 
