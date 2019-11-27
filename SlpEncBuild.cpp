@@ -12,9 +12,9 @@
 #include "SelfShapedSlpV2.hpp"
 #include "DirectAccessibleGammaCode.hpp"
 #include "IncBitLenCode.hpp"
+#include "FixedBitLenCode.hpp"
 #include "SelectType.hpp"
 #include "VlcVec.hpp"
-
 
 using namespace std;
 
@@ -100,7 +100,7 @@ void measure_PlainSlp
 
 int main(int argc, char* argv[])
 {
-  using Fiv = IntVec<>;
+  using Fblc = FixedBitLenCode<>;
   using SelSd = SelectSdvec<>;
   using SelMcl = SelectMcl<>;
   using DagcSd = DirectAccessibleGammaCode<SelSd>;
@@ -116,9 +116,9 @@ int main(int argc, char* argv[])
   funcs_type funcs;
 
   //// PlainSlp
-  funcs.insert(make_pair("PlainSlp_FivFiv", measure_PlainSlp<PlainSlp<var_t, Fiv, Fiv>>));
-  funcs.insert(make_pair("PlainSlp_IblcFiv", measure_PlainSlp<PlainSlp<var_t, IncBitLenCode, Fiv>>));
-  funcs.insert(make_pair("PlainSlp_32Fiv", measure_PlainSlp<PlainSlp<var_t, IntVec<32>, Fiv>>));
+  funcs.insert(make_pair("PlainSlp_FblcFblc", measure_PlainSlp<PlainSlp<var_t, Fblc, Fblc>>));
+  funcs.insert(make_pair("PlainSlp_IblcFblc", measure_PlainSlp<PlainSlp<var_t, IncBitLenCode, Fblc>>));
+  funcs.insert(make_pair("PlainSlp_32Fblc", measure_PlainSlp<PlainSlp<var_t, FixedBitLenCode<32>, Fblc>>));
 
   //// PoSlp: Post-order SLP
   //// Sometimes PoSlp_Sd is better than PoSlp_Iblc
@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
     for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
       if ((itr->first).compare("ShapedSlp_Status_SdSdSd_SdMcl") != 0) {
         cout << itr->first << ": BEGIN" << std::endl;
-        itr->second(slp, out + "_" + itr->first);
+        itr->second(slp, out + itr->first);
         cout << itr->first << ": END" << std::endl;
       }
     }

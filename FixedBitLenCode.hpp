@@ -1,5 +1,5 @@
-#ifndef INCLUDE_GUARD_VlcVec
-#define INCLUDE_GUARD_VlcVec
+#ifndef INCLUDE_GUARD_FixedBitLenCode
+#define INCLUDE_GUARD_FixedBitLenCode
 
 #include <sdsl/bit_vectors.hpp>
 #include "Common.hpp"
@@ -9,22 +9,21 @@
 
 template
 <
-  class t_coder = sdsl::coder::elias_delta,
-  uint32_t t_dens = 128
+  uint8_t t_width = 0
   >
-class VlcVec
+class FixedBitLenCode
 {
 private:
-  sdsl::vlc_vector<t_coder, t_dens> vlc_;
+  sdsl::int_vector<t_width> vec_;
 
 
 public:
-  VlcVec
+  FixedBitLenCode
   ()
   {}
 
 
-  ~VlcVec()
+  ~FixedBitLenCode()
   {}
 
 
@@ -33,7 +32,17 @@ public:
   (
    const vecT & vec
    ) {
-    vlc_ = std::move(sdsl::vlc_vector<t_coder>(vec));
+    if (t_width == 0) {
+      uint8_t w = 1;
+      for (uint64_t i = 0; i < vec.size(); ++i) {
+        w = std::max(w, static_cast<uint8_t>(sdsl::bits::hi(vec[i]) + 1));
+      }
+      vec_.width(w);
+    }
+    vec_.resize(vec.size());
+    for (uint64_t i = 0; i < vec.size(); ++i) {
+      vec_[i] = vec[i];
+    }
   }
 
 
@@ -59,7 +68,7 @@ public:
    ) const {
     assert(idx < num_);
 
-    return vlc_[idx];
+    return vec_[idx];
   }
 
 
@@ -67,7 +76,7 @@ public:
    * @brief Get size.
    */
   size_t size() const noexcept {
-    return vlc_.size();
+    return vec_.size();
   }
 
 
@@ -76,7 +85,7 @@ public:
    */
   size_t calcMemBytes() const noexcept {
     size_t ret = sizeof(*this);
-    ret += sdsl::size_in_bytes(vlc_);
+    ret += sdsl::size_in_bytes(vec_);
     return ret;
   }
 
@@ -85,7 +94,7 @@ public:
   (
    std::istream & in
    ) {
-    vlc_.load(in);
+    vec_.load(in);
   }
 
 
@@ -93,7 +102,7 @@ public:
   (
    std::ostream & out
    ) const {
-    vlc_.serialize(out);
+    vec_.serialize(out);
   }
 
 
@@ -101,7 +110,7 @@ public:
   (
    const bool verbose = false
    ) const noexcept {
-    std::cout << "VlcVec object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
+    std::cout << "IntVec object (" << this << ") " << __func__ << "(" << verbose << ") BEGIN" << std::endl;
     if (verbose) {
       const auto size = this->size();
       std::cout << "dump stored values" << std::endl;
@@ -110,7 +119,7 @@ public:
       }
       std::cout << std::endl;
     }
-    std::cout << "VlcVec object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
+    std::cout << "IntVec object (" << this << ") " << __func__ << "(" << verbose << ") END" << std::endl;
   }
 };
 
