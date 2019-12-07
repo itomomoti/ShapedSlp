@@ -7,7 +7,6 @@
 #include <map>
 #include <set>
 #include <stack>
-#include <sdsl/bit_vectors.hpp>
 #include "Common.hpp"
 #include "NaiveSlp.hpp"
 #include "fbtree.h"
