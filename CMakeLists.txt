@@ -46,8 +46,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "-g -Ofast -fstrict-aliasing -march=native -pthread 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native -pthread")
 
 
-add_executable(SlpEncBuild SlpEncBuild.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
+add_executable(SlpEncBuild SlpEncBuild.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(SlpEncBuild sdsl)
 
-add_executable(SubstrBenchmark SubstrBenchmark.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)
+add_executable(SubstrBenchmark SubstrBenchmark.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c)
 TARGET_LINK_LIBRARIES(SubstrBenchmark sdsl)
