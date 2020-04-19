@@ -152,6 +152,10 @@ int main(int argc, char* argv[])
   funcs.insert(make_pair("SelfShapedSlpV2_SdSd_Sd", measure<SelfShapedSlpV2<var_t, DagcSd, DagcSd, SelSd>>));
   // funcs.insert(make_pair("SelfShapedSlpV2_SdSd_Mcl", measure<SelfShapedSlpV2<var_t, DagcSd, DagcSd, SelMcl>>));
 
+
+  //// ShapedSlp_Status_SdMclSd_SdMcl:
+  funcs.insert(make_pair("ShapedSlp_Status_SdMclSd_SdMcl", measure<ShapedSlp_Status<var_t, DagcSd, DagcMcl, DagcSd, SelSd, SelMcl>>));
+
   string methodList;
   for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
     methodList += itr->first + ". ";
@@ -181,7 +185,7 @@ int main(int argc, char* argv[])
 
   if (encoding.compare("All") == 0) {
     for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
-      if ((itr->first).compare("ShapedSlp_Status_SdSdSd_SdMcl") != 0) {
+      if ((itr->first).compare("ShapedSlp_Status_SdMclSd_SdMcl") != 0) {
         cout << itr->first << ": BEGIN" << std::endl;
         itr->second(slp, out + itr->first);
         cout << itr->first << ": END" << std::endl;
