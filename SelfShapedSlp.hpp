@@ -275,9 +275,9 @@ public:
 
   size_t calcMemBytesOfMph() const {
     char fname[] = "rs_temp_output"; // temp
-    fstream fs;
-    fs.exceptions(fstream::failbit | fstream::badbit);
-    fs.open(fname, fstream::out | fstream::binary | fstream::trunc);
+    std::fstream fs;
+    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+    fs.open(fname, std::fstream::out | std::fstream::binary | std::fstream::trunc);
     fs << (*rs_);
     struct stat s;
     stat(fname, &s);
@@ -352,8 +352,8 @@ public:
   
 private:
   //// used to create input for RecSplit
-  string uint2Str(const uint64_t n) const {
-    string ret;
+  std::string uint2Str(const uint64_t n) const {
+    std::string ret;
     ret.resize(8);
     for (uint64_t i = 0; i < 8; ++i) {
       ret[i] = (n >> (8 * i)) & 0xFF;
