@@ -53,8 +53,6 @@ public:
   (
    const size_t idx //!< in [0, num_).
    ) const {
-    assert(idx < num_);
-
     return this->read(idx);
   }
 
@@ -66,8 +64,6 @@ public:
   (
    const size_t idx //!< in [0, num_)
    ) const {
-    assert(idx < num_);
-
     return vec_[idx];
   }
 

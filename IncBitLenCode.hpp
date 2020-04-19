@@ -91,8 +91,6 @@ public:
   (
    const size_t idx //!< in [0, capacity_).
    ) const {
-    assert(idx < capacity_);
-
     return this->read(idx);
   }
 
@@ -104,8 +102,6 @@ public:
   (
    const size_t idx //!< in [0, capacity_).
    ) const {
-    assert(idx < capacity_);
-
     const uint8_t h = sdsl::bits::hi(idx + kOffset);
     const uint64_t bitPos = basePos_[h - kOffsetW] + (h + 1) * ((idx + kOffset) ^ (1ULL << h));
     return sdsl::bits::read_int(array_ + (bitPos / 64), bitPos % 64, h + 1);

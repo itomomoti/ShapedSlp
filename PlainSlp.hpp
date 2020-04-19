@@ -101,8 +101,6 @@ public:
   (
    const uint64_t pos //!< 0-based position
    ) const {
-    assert(i < getLen());
-
     return charAt(pos, startVar_);
   }
 
@@ -269,8 +267,6 @@ public:
   (
    std::ostream & out
    ) const {
-    assert(rs_ != nullptr);
-
     out.write((char*) & len_, sizeof(len_));
     out.write((char*) & numRules_, sizeof(numRules_));
     out.write((char*) & startVar_, sizeof(startVar_));

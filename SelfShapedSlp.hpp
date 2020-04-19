@@ -318,18 +318,14 @@ public:
     rs_ = new sux::function::RecSplit<kLeaf>();
     in >> (*rs_);
     seqSBV_.load(in);
-    seqRank_.load(in);
-    seqSel_.load(in);
+    seqRank_.load(in, &seqSBV_);
+    seqSel_.load(in, &seqSBV_);
     slpDivSel_.load(in);
     balBv_.load(in);
-    balBvRank_.load(in);
+    balBvRank_.load(in, &balBv_);
     vlcSeq_.load(in);
     vlc_.load(in);
     bal_.load(in);
-
-    balBvRank_.set_vector(&balBv_);
-    seqRank_.set_vector(&seqSBV_);
-    seqSel_.set_vector(&seqSBV_);
   }
 
   void serialize
