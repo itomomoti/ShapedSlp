@@ -41,9 +41,9 @@ message("Building in ${CMAKE_BUILD_TYPE} mode")
 # set(CMAKE_CXX_FLAGS "--std=c++2a /opt/local/lib/libstdc++.6.dylib")
 set(CMAKE_CXX_FLAGS "--std=c++2a")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -Ofast -fstrict-aliasing -march=native -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g -march=native -pthread")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -Ofast -fstrict-aliasing -march=native -pthread -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native -pthread")
 
 
 add_executable(SlpEncBuild SlpEncBuild.cpp Common.cpp ${FOLCA_SOURCE_DIR}/fbtree.cpp ${FOLCA_SOURCE_DIR}/onlinebp.c ${SUX_SOURCE_DIR}/function/DoubleEF.cpp ${SUX_SOURCE_DIR}/function/RiceBitVector.cpp ${SUX_SOURCE_DIR}/support/SpookyV2.cpp)

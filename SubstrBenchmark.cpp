@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <queue>
+#include <thread>
 #include "cmdline.h"
 #include "Common.hpp"
 #include "PlainSlp.hpp"
@@ -23,6 +24,16 @@ using timer = std::chrono::high_resolution_clock;
 
 using var_t = uint32_t;
 
+void exstr
+(
+ const uint64_t pos, //!< beginning position
+ uint64_t len, //!< length to expand
+ char * str //!< [out] must have length at least 'len'
+ ) {
+  for (uint64_t i = 0; i < len; ++i) {
+    str[i] = 'a' + i;
+  }
+}
 
 template<class SlpT>
 void measure
@@ -32,6 +43,7 @@ void measure
  const uint64_t lenExpand,
  const uint64_t firstPos,
  const uint64_t jump,
+ uint64_t numThreads,
  const bool dummy_flag
 ) {
   SlpT slp;
@@ -50,6 +62,10 @@ void measure
     exit(1);
   }
 
+  if (numThreads > lenExpand) {
+    numThreads = lenExpand;
+  }
+  const uint64_t tlen = (numThreads)? lenExpand / numThreads : 0;
   const uint64_t numLoop = 50;
   std::vector<double> times(numLoop);
   string substr;
@@ -59,7 +75,22 @@ void measure
     uint64_t beg = firstPos;
     for (uint64_t i = 0; i < numItr; ++i) {
       // substr[0] = slp.charAt(beg);
-      slp.expandSubstr(beg, lenExpand, substr.data());
+      if (numThreads) {
+        vector<thread> threads;
+        for (int t = 0; t < numThreads - 1; ++t) {
+          const uint64_t toffs = t * tlen;
+          // threads.push_back(thread([&]() { exstr(beg + toffs, tlen, substr.data() + toffs); }));
+          threads.push_back(thread([&]() { slp.expandSubstr(beg + toffs, tlen, substr.data() + toffs); }));
+        }
+        const uint64_t toffs = (numThreads - 1) * tlen;
+        // threads.push_back(thread([&]() { exstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
+        threads.push_back(thread([&]() { slp.expandSubstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
+        for (std::thread &th : threads) {
+          th.join();
+        }
+      } else {
+        slp.expandSubstr(beg, lenExpand, substr.data());
+      }
       beg += jump;
       if (beg > textLen - lenExpand) {
         beg -= (textLen - lenExpand);
@@ -94,6 +125,7 @@ int main(int argc, char* argv[])
                           const uint64_t lenExpand,
                           const uint64_t firstPos,
                           const uint64_t jump,
+                          uint64_t numThreads,
                           const bool dummy_flag
                           )>;
   funcs_type funcs;
@@ -148,6 +180,7 @@ int main(int argc, char* argv[])
   parser.add<uint64_t>("lenExpand", 'l', "length to expand", true);
   parser.add<uint64_t>("firstPos", 'f', "first position to access", false, 0);
   parser.add<uint64_t>("jump", 'j', "amount of jump when determining the next position to access", false, 38201); // default 38201 is a prime number
+  parser.add<uint64_t>("numThreads", 't', "number of threads", false, 0);
   parser.add<bool>("dummy_flag", 0, "this is dummy flag to prevent that optimization deletes codes", false, false);
   parser.parse_check(argc, argv);
   const string in = parser.get<string>("input");
@@ -156,6 +189,7 @@ int main(int argc, char* argv[])
   const uint64_t lenExpand = parser.get<uint64_t>("lenExpand");
   const uint64_t firstPos = parser.get<uint64_t>("firstPos");
   const uint64_t jump = parser.get<uint64_t>("jump");
+  const uint64_t nt = parser.get<uint64_t>("numThreads");
   const bool dummy_flag = parser.get<bool>("dummy_flag");
 
   if (numItr == 0) {
@@ -167,13 +201,13 @@ int main(int argc, char* argv[])
   if (encoding.compare("All") == 0) {
     for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
       cout << itr->first << ": BEGIN" << std::endl;
-      itr->second(in + itr->first, numItr, lenExpand, firstPos, jump, dummy_flag);
+      itr->second(in + itr->first, numItr, lenExpand, firstPos, jump, nt, dummy_flag);
       cout << itr->first << ": END" << std::endl;
     }
   } else {
     auto itr = funcs.find(encoding);
     if (itr != funcs.end()) {
-      itr->second(in, numItr, lenExpand, firstPos, jump, dummy_flag);
+      itr->second(in, numItr, lenExpand, firstPos, jump, nt, dummy_flag);
     } else {
       cerr << "error: specify a valid encoding name in " + methodList << endl;
       exit(1);
