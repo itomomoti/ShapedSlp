@@ -66,7 +66,8 @@ void measure
     numThreads = lenExpand;
   }
   const uint64_t tlen = (numThreads)? lenExpand / numThreads : 0;
-  const uint64_t numLoop = 50;
+  std::cout << "numThreads = " << numThreads << ", hardware_concurrency = " << std::thread::hardware_concurrency() << std::endl;
+  const uint64_t numLoop = 11;
   std::vector<double> times(numLoop);
   string substr;
   substr.resize(lenExpand);
@@ -77,16 +78,18 @@ void measure
       // substr[0] = slp.charAt(beg);
       if (numThreads) {
         vector<thread> threads;
-        for (int t = 0; t < numThreads - 1; ++t) {
+        for (uint64_t t = 0; t < numThreads - 1; ++t) {
           const uint64_t toffs = t * tlen;
           // threads.push_back(thread([&]() { exstr(beg + toffs, tlen, substr.data() + toffs); }));
-          threads.push_back(thread([&]() { slp.expandSubstr(beg + toffs, tlen, substr.data() + toffs); }));
+          threads.push_back(thread([toffs, beg, tlen, &slp, &substr]() { slp.expandSubstr(beg + toffs, tlen, substr.data() + toffs); }));
         }
         const uint64_t toffs = (numThreads - 1) * tlen;
         // threads.push_back(thread([&]() { exstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
-        threads.push_back(thread([&]() { slp.expandSubstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
-        for (std::thread &th : threads) {
-          th.join();
+        threads.push_back(thread([toffs, beg, lenExpand, &slp, &substr]() { slp.expandSubstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
+        for (auto &th : threads) {
+          if (th.joinable()) {
+            th.join();
+          }
         }
       } else {
         slp.expandSubstr(beg, lenExpand, substr.data());
