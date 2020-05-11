@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
 ### use a compiler supporting constexpr math
-# set(CMAKE_C_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "gcc compiler" FORCE)
-# set(CMAKE_CXX_COMPILER "/opt/local/bin/gcc-mp-9" CACHE STRING "g++ compiler" FORCE)
+set(CMAKE_C_COMPILER "/usr/local/lib/gcc-9.1.0/bin/gcc" CACHE STRING "gcc compiler" FORCE)
+set(CMAKE_CXX_COMPILER "/usr/local/lib/gcc-9.1.0/bin/g++" CACHE STRING "g++ compiler" FORCE)
 
 ### Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,7 +38,7 @@ endif()
 
 message("Building in ${CMAKE_BUILD_TYPE} mode")
 
-# set(CMAKE_CXX_FLAGS "--std=c++2a /opt/local/lib/libstdc++.6.dylib")
+set(CMAKE_CXX_FLAGS "--std=c++2a /usr/lib64/libstdc++.so.6.0.27")
 set(CMAKE_CXX_FLAGS "--std=c++2a")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g -march=native -pthread")
