@@ -24,17 +24,6 @@ using timer = std::chrono::high_resolution_clock;
 
 using var_t = uint32_t;
 
-void exstr
-(
- const uint64_t pos, //!< beginning position
- uint64_t len, //!< length to expand
- char * str //!< [out] must have length at least 'len'
- ) {
-  for (uint64_t i = 0; i < len; ++i) {
-    str[i] = 'a' + i;
-  }
-}
-
 template<class SlpT>
 void measure
 (
@@ -75,16 +64,13 @@ void measure
     start = timer::now();
     uint64_t beg = firstPos;
     for (uint64_t i = 0; i < numItr; ++i) {
-      // substr[0] = slp.charAt(beg);
       if (numThreads) {
         vector<thread> threads;
         for (uint64_t t = 0; t < numThreads - 1; ++t) {
           const uint64_t toffs = t * tlen;
-          // threads.push_back(thread([&]() { exstr(beg + toffs, tlen, substr.data() + toffs); }));
           threads.push_back(thread([toffs, beg, tlen, &slp, &substr]() { slp.expandSubstr(beg + toffs, tlen, substr.data() + toffs); }));
         }
         const uint64_t toffs = (numThreads - 1) * tlen;
-        // threads.push_back(thread([&]() { exstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
         threads.push_back(thread([toffs, beg, lenExpand, &slp, &substr]() { slp.expandSubstr(beg + toffs, lenExpand - toffs, substr.data() + toffs); } ));
         for (auto &th : threads) {
           if (th.joinable()) {
@@ -152,8 +138,8 @@ int main(int argc, char* argv[])
 
   //// ShapedSlpV2: all vlc vectors are merged into one.
   //// Generally encoding size gets worse than ShapedSlp_SdMclSd_SdMcl because
-  //// - bit length to represnet stg and bal element is large and DagcSd is a good choice, whereas
-  //// - bit size to represent slp element is significantly small and DagcMcl should be used
+  //// - Since bit length to represnet stg and bal element is large, DagcSd is a good choice.
+  //// - On the other hand, bit size to represent slp element is significantly small, and so SelMcl should be used
   funcs.insert(make_pair("ShapedSlpV2_Sd_SdMcl", measure<ShapedSlpV2<var_t, DagcSd, SelSd, SelMcl>>));
   // funcs.insert(make_pair("ShapedSlpV2_SdSdSd", measure<ShapedSlp<var_t, DagcSd, SelSd, SelSd>>));
   // funcs.insert(make_pair("ShapedSlpV2_SdMclMcl", measure<ShapedSlp<var_t, DagcSd, SelMcl, SelMcl>>));
@@ -210,7 +196,9 @@ int main(int argc, char* argv[])
   } else {
     auto itr = funcs.find(encoding);
     if (itr != funcs.end()) {
+      cout << itr->first << ": BEGIN" << std::endl;
       itr->second(in, numItr, lenExpand, firstPos, jump, nt, dummy_flag);
+      cout << itr->first << ": END" << std::endl;
     } else {
       cerr << "error: specify a valid encoding name in " + methodList << endl;
       exit(1);
