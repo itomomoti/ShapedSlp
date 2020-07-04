@@ -378,11 +378,7 @@ private:
    const uint64_t varlen,
    const uint64_t leftvarlen
    ) const {
-    if (varlen/2 <= leftvarlen) {
-      return ((leftvarlen - varlen/2) << 1); // lsb is 0
-    } else {
-      return ((varlen/2 - leftvarlen) << 1) + 1; // lsb is 1
-    }
+    return leftvarlen;
   }
 
 
@@ -391,12 +387,34 @@ private:
    const uint64_t varlen,
    const uint64_t balenc
    ) const {
-    if ((balenc & 1) == 0) { // lsb is 0
-      return varlen/2 + (balenc >> 1);
-    } else { // lsb is 1
-      return varlen/2 - (balenc >> 1);
-    }
+    return balenc;
   }
+
+
+  // uint64_t encBal
+  // (
+  //  const uint64_t varlen,
+  //  const uint64_t leftvarlen
+  //  ) const {
+  //   if (varlen/2 <= leftvarlen) {
+  //     return ((leftvarlen - varlen/2) << 1); // lsb is 0
+  //   } else {
+  //     return ((varlen/2 - leftvarlen) << 1) + 1; // lsb is 1
+  //   }
+  // }
+
+
+  // uint64_t decLeftVarLen
+  // (
+  //  const uint64_t varlen,
+  //  const uint64_t balenc
+  //  ) const {
+  //   if ((balenc & 1) == 0) { // lsb is 0
+  //     return varlen/2 + (balenc >> 1);
+  //   } else { // lsb is 1
+  //     return varlen/2 - (balenc >> 1);
+  //   }
+  // }
 
 
   // std::vector<uint64_t> calcOrder
