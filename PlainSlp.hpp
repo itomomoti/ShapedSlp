@@ -23,6 +23,7 @@ class PlainSlp
 public:
   //// Public constant, alias etc.
   using var_t = tparam_var_t;
+  using nodeT = std::tuple<uint64_t, var_t, var_t>; // (expansion_length, node_id, child_rank): stack of nodes indicates a path
 
 
 private:
@@ -185,6 +186,61 @@ public:
     if (lenExpand > leftLen) {
       expandPref(lenExpand - leftLen, str + leftLen, getRight(varId - getAlphSize()));
     }
+  }
+
+
+  nodeT getRootNode() const {
+    return std::forward_as_tuple(getLen(), 0, 0);
+  }
+
+
+  nodeT getChildNode_Root
+  (
+   const uint64_t idx
+   ) const {
+    return std::forward_as_tuple(getLen(), startVar_, idx);
+  }
+
+
+  nodeT getChildNode
+  (
+   const nodeT & node,
+   const uint64_t idx
+   ) const {
+    assert(std::get<0>(node) > 1); // len > 1
+
+    const uint64_t len = std::get<0>(node);
+    const uint64_t varId = std::get<1>(node);
+    const uint64_t newVarId = (idx == 0) ? getLeft(varId - getAlphSize()) : getRight(varId - getAlphSize());
+    const uint64_t newLen = (newVarId < getAlphSize()) ? 1 : expLen_[newVarId - getAlphSize()];
+    return std::forward_as_tuple(newLen, newVarId, idx);
+  }
+
+
+  nodeT getChildNodeForPos_Root
+  (
+   uint64_t & pos //! [in, out]
+   ) const {
+    return std::forward_as_tuple(getLen(), startVar_, 0);
+  }
+
+
+  nodeT getChildNodeForPos
+  (
+   const nodeT & node,
+   uint64_t & pos //! [in, out]
+   ) const {
+    assert(std::get<0>(node) > 1); // len > 1
+
+    const uint64_t len = std::get<0>(node);
+    const uint64_t varId = std::get<1>(node);
+    const uint64_t leftVarId = getLeft(varId - getAlphSize());
+    const uint64_t leftLen = (leftVarId < getAlphSize()) ? 1 : expLen_[leftVarId - getAlphSize()];
+    const uint64_t idx = (pos < leftLen) ? 0 : 1;
+    const uint64_t newVarId = (idx == 0) ? leftVarId : getRight(varId - getAlphSize());
+    const uint64_t newLen = (idx == 0) ? leftLen : len - leftLen;
+    pos -= leftLen * idx;
+    return std::forward_as_tuple(newLen, newVarId, idx);
   }
 
 

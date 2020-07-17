@@ -118,7 +118,7 @@ private:
 
 
   sdT bv_;
-  sdT::select_1_type bvSel_;
+  typename sdT::select_1_type bvSel_;
 
 
 public:
@@ -223,8 +223,8 @@ template
 class SelectRrr
 {
 private:
-  using rrrT = sdsl::rrr_vector<t_bs, t_rac, t_k>;
-  using rrrSelT = rrrT::select_1_type;
+  using rrrT = typename sdsl::rrr_vector<t_bs, t_rac, t_k>;
+  using rrrSelT = typename rrrT::select_1_type;
 
 
   rrrT bv_;

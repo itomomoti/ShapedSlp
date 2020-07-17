@@ -24,6 +24,7 @@ class PoSlp
 public:
   //// Public constant, alias etc.
   using var_t = tparam_var_t;
+  using nodeT = std::tuple<uint64_t, var_t, var_t>; // (expansion_length, node_id, child_rank): stack of nodes indicates a path
 
 
 private:
@@ -53,7 +54,7 @@ public:
 
 
   size_t getLenSeq() const {
-    return 1;
+    return 1; // consider as a forest with a single root
   }
 
 
@@ -220,6 +221,71 @@ public:
     if (lenExpand > leftLen) {
       expandPref(lenExpand - leftLen, str + leftLen, varLen - leftLen, treePos - 1);
     }
+  }
+
+
+  nodeT getRootNode() const {
+    return std::forward_as_tuple(getLen(), 0, 0);
+  }
+
+
+  nodeT getChildNode_Root
+  (
+   const uint64_t idx
+   ) const {
+    return std::forward_as_tuple(getLen(), 2 * getNumRulesOfSlp(), idx);
+  }
+
+
+  nodeT getChildNode
+  (
+   const nodeT & node,
+   const uint64_t idx
+   ) const {
+    assert(std::get<0>(node) > 1); // len > 1
+    // std::cout << "idx = " << idx << ", std::get<0>(node) = " << std::get<0>(node) << ", std::get<1>(node) = " << std::get<1>(node) << ", std::get<2>(node) = " << std::get<2>(node) << std::endl;
+
+    const uint64_t len = std::get<0>(node);
+    uint64_t treePos = std::get<1>(node);
+    if (fbt_.IsLeaf(treePos)) {
+      treePos = fbt_.InSelect(leaves_[fbt_.LeafRank(treePos) - 1] - getAlphSize() + 1);
+    }
+    const uint64_t leftTreePos = fbt_.Left(treePos);
+    const uint64_t leftLen = len - (accPa(treePos) - accPa(leftTreePos));
+    const uint64_t varLen = (idx == 0) ? leftLen : len - leftLen;
+    const uint64_t newTreePos = (idx == 0) ? leftTreePos : treePos - 1;
+    return std::forward_as_tuple(varLen, newTreePos, idx);
+  }
+
+
+  nodeT getChildNodeForPos_Root
+  (
+   uint64_t & pos //! [in, out]
+   ) const {
+    return std::forward_as_tuple(getLen(), 2 * getNumRulesOfSlp(), 0);
+  }
+
+
+  nodeT getChildNodeForPos
+  (
+   const nodeT & node,
+   uint64_t & pos //! [in, out]
+   ) const {
+    assert(std::get<0>(node) > 1); // len > 1
+    // std::cout << "pos = " << pos << ", std::get<0>(node) = " << std::get<0>(node) << ", std::get<1>(node) = " << std::get<1>(node) << ", std::get<2>(node) = " << std::get<2>(node) << std::endl;
+
+    const uint64_t len = std::get<0>(node);
+    uint64_t treePos = std::get<1>(node);
+    if (fbt_.IsLeaf(treePos)) {
+      treePos = fbt_.InSelect(leaves_[fbt_.LeafRank(treePos) - 1] - getAlphSize() + 1);
+    }
+    const uint64_t leftTreePos = fbt_.Left(treePos);
+    const uint64_t leftLen = len - (accPa(treePos) - accPa(leftTreePos));
+    const uint64_t idx = (pos < leftLen) ? 0 : 1;
+    const uint64_t varLen = (idx == 0) ? leftLen : len - leftLen;
+    const uint64_t newTreePos = (idx == 0) ? leftTreePos : treePos - 1;
+    pos -= leftLen * idx;
+    return std::forward_as_tuple(varLen, newTreePos, idx);
   }
 
 

@@ -30,6 +30,7 @@ class SelfShapedSlp
 public:
   //// Public constant, alias etc.
   using var_t = tparam_var_t;
+  using nodeT = std::tuple<uint64_t, var_t, var_t>; // (expansion_length, node_id, child_rank): stack of nodes indicates a path
 
 
 private:
@@ -83,6 +84,11 @@ public:
 
   size_t getLenSeq() const {
     return vlcSeq_.size();
+  }
+
+
+  size_t getNumRules() const {
+    return slpDivSel_.size();
   }
 
 
@@ -203,6 +209,68 @@ public:
     if (len > leftLen) {
       expandPref(len - leftLen, str + leftLen, varLen - leftLen, vlc_[2 * slpId + 1]);
     }
+  }
+
+
+  nodeT getRootNode() const {
+    return std::forward_as_tuple(getLen(), 0, 0);
+  }
+
+
+  nodeT getChildNode_Root
+  (
+   const uint64_t idx
+   ) const {
+    const uint64_t varLen = lenOfSeqAt(idx);
+    const uint64_t slpOffset = vlcSeq_[idx];
+    return std::forward_as_tuple(varLen, getId(varLen, slpOffset), idx);
+  }
+
+
+  nodeT getChildNode
+  (
+   const nodeT & node,
+   const uint64_t idx
+   ) const {
+    const uint64_t parLen = std::get<0>(node);
+    const uint64_t parId = std::get<1>(node);
+    const uint64_t parH = hashLen(parLen);
+    const uint64_t balPos = parH + balBvRank_(parId - parH);
+    const uint64_t leftLen = decLeftVarLen(parLen, bal_[balPos]);
+    const uint64_t varLen = (idx == 0) ? leftLen : parLen - leftLen;
+    const uint64_t slpOffset = vlc_[2 * parId + idx];
+    return std::forward_as_tuple(varLen, getId(varLen, slpOffset), idx);
+  }
+
+
+  nodeT getChildNodeForPos_Root
+  (
+   uint64_t & pos //! [in, out]
+   ) const {
+    const uint64_t seqPos = seqRank_(pos + 1);
+    const uint64_t varLen = lenOfSeqAt(seqPos);
+    const uint64_t prevSum = (seqPos > 0) ? seqSel_(seqPos) : 0;
+    pos -= prevSum;
+    const uint64_t slpOffset = vlcSeq_[seqPos];
+    return std::forward_as_tuple(varLen, getId(varLen, slpOffset), seqPos);
+  }
+
+
+  nodeT getChildNodeForPos
+  (
+   const nodeT & node,
+   uint64_t & pos //! [in, out]
+   ) const {
+    const uint64_t parLen = std::get<0>(node);
+    const uint64_t parId = std::get<1>(node);
+    const uint64_t parH = hashLen(parLen);
+    const uint64_t balPos = parH + balBvRank_(parId - parH);
+    const uint64_t leftLen = decLeftVarLen(parLen, bal_[balPos]);
+    const uint64_t idx = (pos < leftLen) ? 0 : 1;
+    const uint64_t varLen = (idx == 0) ? leftLen : parLen - leftLen;
+    const uint64_t slpOffset = vlc_[2 * parId + idx];
+    pos -= leftLen * idx;
+    return std::forward_as_tuple(varLen, getId(varLen, slpOffset), idx);
   }
 
 
@@ -351,6 +419,20 @@ public:
 
   
 private:
+  var_t getId
+  (
+   uint64_t len,
+   uint64_t offset
+   ) const {
+    if (len > 1) {
+      const uint64_t h = hashLen(len);
+      return slpDivSel_(h + 1) + offset;
+    } else {
+      return alph_[offset];
+    }
+  }
+
+
   //// used to create input for RecSplit
   std::string uint2Str(const uint64_t n) const {
     std::string ret;
